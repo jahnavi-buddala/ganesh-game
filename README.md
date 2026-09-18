@@ -1,6 +1,6 @@
 # SUBWAY-SURFERS
 
-SUBWAY-SURFERS made with Three.js (from [DanielLin0516/SUBWAY-SURFERS](https://github.com/DanielLin0516/SUBWAY-SURFERS.git)).
+SUBWAY-SURFERS made with Three.js .
 
 ## Features:
 
