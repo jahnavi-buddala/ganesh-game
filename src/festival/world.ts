@@ -66,11 +66,11 @@ function modak() {
 function omGift(){
   const group=new T.Group();
   const texture=canvasTexture(256,256,c=>{const glow=c.createRadialGradient(128,128,8,128,128,124);glow.addColorStop(0,'#fff8cfff');glow.addColorStop(.28,'#ffc83faa');glow.addColorStop(.7,'#ff8a221f');glow.addColorStop(1,'#ff8a2200');c.fillStyle=glow;c.fillRect(0,0,256,256);c.font='bold 138px Georgia';c.textAlign='center';c.textBaseline='middle';c.shadowColor='#ffbd38';c.shadowBlur=24;c.fillStyle='#fff1a6';c.fillText('ॐ',128,137);});
-  const symbol=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthWrite:false,depthTest:false,blending:T.AdditiveBlending,toneMapped:false}));symbol.scale.set(3.15,3.15,1);symbol.renderOrder=9;group.add(symbol);
+  const symbol=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthWrite:false,depthTest:false,blending:T.AdditiveBlending,toneMapped:false}));symbol.position.y=1.45;symbol.scale.set(3.15,3.15,1);symbol.renderOrder=9;symbol.userData.fallback=true;group.add(symbol);
   const ring=mesh(group,'torus',0xffc640,[0,0,0],[1.05,1.05,1.05],.8);ring.rotation.x=Math.PI/2;
   const outer=mesh(group,'torus',0xffe58c,[0,.04,0],[1.35,1.35,1.35],.6);outer.rotation.x=Math.PI/2;
-  const beam=new T.Mesh(new T.CylinderGeometry(.14,.72,6,20,1,true),new T.MeshBasicMaterial({color:0xffcf55,transparent:true,opacity:.18,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide}));beam.position.y=1.7;group.add(beam);
-  const light=new T.PointLight(0xffc247,7,13,1.8);light.position.y=.5;group.add(light);
+  const beam=new T.Mesh(new T.CylinderGeometry(.14,.72,6,20,1,true),new T.MeshBasicMaterial({color:0xffcf55,transparent:true,opacity:.18,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide}));beam.position.y=2.2;group.add(beam);
+  const light=new T.PointLight(0xffc247,7,13,1.8);light.position.y=1.2;group.add(light);
   return group;
 }
 function mouse() {
@@ -236,6 +236,7 @@ export default class FestivalWorld {
     this.templates.rooftop=fitted('temple-rooftop',[2.472,2.67,11]);
     this.templates.lamp=normalized('titanic-lamp',[1.35,4.4,1.35]);
     this.templates.road=roadFitted('marigold-lantern-path');
+    const omPickup=omGift(),fallback=omPickup.children.find(child=>child.userData.fallback);if(fallback)omPickup.remove(fallback);const omModel=normalized('om-symbol',[1.9,2.35,.85]);omModel.position.y=.12;omPickup.add(omModel);this.templates.om=omPickup;
     // The supplied lantern-path mesh contains broad baked white bands and large
     // yellow markers. Keep the asset available, but use the clearer stone road.
     for(const chunk of this.chunks)for(const side of [-1,1])for(const z of [0]){const lamp=this.templates.lamp.clone();lamp.position.set(side*6.2,.12,z);lamp.rotation.y=side<0?Math.PI:0;chunk.add(lamp);}
@@ -393,7 +394,7 @@ export default class FestivalWorld {
   }
   seed(){for(const e of this.entities)this.scene.remove(e.mesh);this.entities=[];this.routeCount=0;for(const lane of [-1,0,1])for(let z=-10-lane*2;z>-34;z-=7)this.add('modak',lane,z);this.add('drum',-1,-42);this.add('barrier',0,-54);this.add('drum',1,-66,0,'marketCart');this.add('cart',0,-80);}
   addRoute(lane:number,z:number){this.add('ramp',lane,z);this.add('cart',lane,z-4.1);this.add('rooftop',lane,z-11.9);for(let i=0;i<6;i++)this.add('modak',lane,z-3-i*2.4,2.67);}
-  add(kind:Entity['kind'],lane:number,z:number,elevation=0,appearance?:string){const selected=this.templates[appearance||kind]||this.templates[kind];if(!selected)return;const mesh=selected.clone();mesh.position.set(lane*3.1,kind==='modak'?.75+elevation:kind==='om'?1.45+elevation:0,z);mesh.userData.appearance=selected===this.templates[appearance||kind]?(appearance||kind):kind;this.scene.add(mesh);this.entities.push({mesh,lane,kind,checked:false,elevation});}
+  add(kind:Entity['kind'],lane:number,z:number,elevation=0,appearance?:string){const selected=this.templates[appearance||kind]||this.templates[kind];if(!selected)return;const mesh=selected.clone();mesh.position.set(lane*3.1,kind==='modak'?.75+elevation:kind==='om'?elevation:0,z);mesh.userData.appearance=selected===this.templates[appearance||kind]?(appearance||kind):kind;this.scene.add(mesh);this.entities.push({mesh,lane,kind,checked:false,elevation});}
   resetRunnerPose(intro:boolean){this.runner.g.position.set(0,0,3);this.runner.g.rotation.set(0,0,0);this.runner.g.scale.set(1,1,1);this.runner.g.visible=true;this.runnerShadow.position.set(0,.025,3);this.runnerShadow.scale.setScalar(1);this.blessingGroundAura.visible=false;this.blessingVisual=0;this.mixer?.stopAllAction();this.motion='';if(intro&&this.mixer){const clip=T.AnimationClip.findByName(this.clips,'Intro');if(clip){const action=this.mixer.clipAction(clip);action.reset().setLoop(T.LoopOnce,1);action.clampWhenFinished=true;action.play();this.motion='Intro';this.mixer.update(0);}}}
   start(theme=0) {if(!this.approved){this.notice('Loading the approved 3D models…');return;}this.startTheme=theme;this.state=freshState(theme);this.state.status='running';this.spawnIn=18;this.patternIndex=0;this.lastMoveTime=-10;this.hitTime=0;this.deathTime=0;this.introTime=1.45;this.seed();this.resetRunnerPose(true);const portrait=this.camera.aspect<.8;this.camera.position.set(-2.8,portrait?4.4:2.75,portrait?12.0:8.4);this.camera.lookAt(0,1.35,-5);this.clock.getDelta();this.enableAudio();this.notice('Ganpati Bappa Morya!');this.tone(523.25,.18);this.onChange({...this.state});}
   menu(){this.state=freshState(this.startTheme);this.patternIndex=0;this.hitTime=0;this.deathTime=0;this.introTime=0;this.seed();this.resetRunnerPose(false);this.onChange({...this.state});}
@@ -427,7 +428,7 @@ export default class FestivalWorld {
       for(const e of this.entities){
         e.mesh.position.z+=travel;
         if(e.kind==='modak'){e.mesh.rotation.y+=dt;e.mesh.position.y=e.elevation+.85+Math.sin(this.time*3+e.mesh.position.z)*.12;}
-        if(e.kind==='om'){e.mesh.rotation.y+=dt*.9;e.mesh.position.y=e.elevation+1.45+Math.sin(this.time*2.4)*.18;const pulse=1+Math.sin(this.time*4)*.08;e.mesh.scale.setScalar(pulse);}
+        if(e.kind==='om'){e.mesh.rotation.y+=dt*.9;e.mesh.position.y=e.elevation+.12+Math.sin(this.time*2.4)*.12;const pulse=1+Math.sin(this.time*4)*.06;e.mesh.scale.setScalar(pulse);}
         const dx=Math.abs(s.x-e.lane*3.1),dz=e.mesh.position.z-3;
         if(!e.checked&&dz>(e.kind==='modak'?-.65:e.kind==='cart'?2.75:e.kind==='rooftop'?5.9:1.2)){
           e.checked=true;
