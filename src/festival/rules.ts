@@ -12,11 +12,16 @@ export function freshState(theme = 0): RunState {
     combo:0, bestCombo:0, blessing:0, maha:false, lane:0, x:0, jump:0,
     velocityY:0, slide:0, ground:0, invincible:0, gateTime:45, nextGate:120, theme};
 }
+export function runSpeed(distance:number,blessing=false){
+  const progressive=15+Math.min(5,distance/80)+Math.min(5,Math.max(0,distance-400)/180)+Math.min(5,Math.max(0,distance-900)/220);
+  return progressive*(blessing?1.2:1);
+}
+export function obstacleSpacing(distance:number){return Math.max(13,21-Math.min(8,distance/160));}
 export function advance(s: RunState, dt: number, startingTheme: number) {
   if (s.status === 'gate') { s.gateTime = Math.max(0, s.gateTime - dt); return; }
   if (s.status !== 'running') return;
   s.elapsed += dt;
-  const speed = (15 + Math.min(10, s.distance / 180)) * (s.blessing > 0 ? 1.28 : 1);
+  const speed = runSpeed(s.distance,s.blessing>0);
   const travel = speed * dt;
   s.distance += travel; s.score += travel * (s.maha && s.blessing > 0 ? 4 : 2);
   s.x += (s.lane * 3.1 - s.x) * Math.min(1, dt * 13);
@@ -90,7 +95,8 @@ export function resolveMotion(s:RunState, before:RunState, solids:Solid[], reque
     const f=step/steps,nx=before.x+(targetX-before.x)*f,nz=requested*f;
     let ny=before.jump+(targetY-before.jump)*f,ng=0;
     for(const body of solids){if(body.disabled)continue;const surface=routeSurface(body.kind,body.z+nz,Math.abs(nx-body.x));
-      if(surface!==null&&((body.kind==='ramp'&&Math.abs(nx-body.x)<1.02&&surface<=y+.12)||(y>=surface-.025&&s.velocityY<=0)))ng=Math.max(ng,surface);
+      const rampHandoff=body.kind==='cart'&&y>2.3&&solids.some(ramp=>ramp.kind==='ramp'&&!ramp.disabled&&Math.abs(ramp.x-body.x)<.01&&Math.abs(ramp.z-body.z-4.1)<.15);
+      if(surface!==null&&((body.kind==='ramp'&&Math.abs(nx-body.x)<1.02&&surface<=y+.12)||rampHandoff||(y>=surface-.025&&s.velocityY<=0)))ng=Math.max(ng,surface);
     }
     ny=Math.max(ny,ng);
     const bodyHeight=s.slide>0?1.15:2.15;

@@ -8,7 +8,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { loadApprovedModels } from './approved';
 import { resolveMotion } from './rules';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { advance, clears, collect, freshState, hit, move, obstaclePattern, reward, type Obstacle, type RunState } from './rules';
+import { advance, clears, collect, freshState, hit, move, obstaclePattern, obstacleSpacing, reward, type Obstacle, type RunState } from './rules';
 
 type Entity = { mesh:T.Group; lane:number; kind:Obstacle|'modak'|'om'|'ramp'|'rooftop'; checked:boolean; elevation:number };
 const palette = {gold:0xe9aa35, red:0x9e2034, stone:0xba7956, ivory:0xffdfac, pink:0xd8918e};
@@ -66,8 +66,11 @@ function modak() {
 function omGift(){
   const group=new T.Group();
   const texture=canvasTexture(256,256,c=>{const glow=c.createRadialGradient(128,128,8,128,128,124);glow.addColorStop(0,'#fff8cfff');glow.addColorStop(.28,'#ffc83faa');glow.addColorStop(.7,'#ff8a221f');glow.addColorStop(1,'#ff8a2200');c.fillStyle=glow;c.fillRect(0,0,256,256);c.font='bold 138px Georgia';c.textAlign='center';c.textBaseline='middle';c.shadowColor='#ffbd38';c.shadowBlur=24;c.fillStyle='#fff1a6';c.fillText('ॐ',128,137);});
-  const symbol=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));symbol.scale.set(2.25,2.25,1);group.add(symbol);
-  const ring=mesh(group,'torus',0xffc640,[0,0,0],[.86,.86,.86],.8);ring.rotation.x=Math.PI/2;
+  const symbol=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthWrite:false,depthTest:false,blending:T.AdditiveBlending,toneMapped:false}));symbol.scale.set(3.15,3.15,1);symbol.renderOrder=9;group.add(symbol);
+  const ring=mesh(group,'torus',0xffc640,[0,0,0],[1.05,1.05,1.05],.8);ring.rotation.x=Math.PI/2;
+  const outer=mesh(group,'torus',0xffe58c,[0,.04,0],[1.35,1.35,1.35],.6);outer.rotation.x=Math.PI/2;
+  const beam=new T.Mesh(new T.CylinderGeometry(.14,.72,6,20,1,true),new T.MeshBasicMaterial({color:0xffcf55,transparent:true,opacity:.18,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide}));beam.position.y=1.7;group.add(beam);
+  const light=new T.PointLight(0xffc247,7,13,1.8);light.position.y=.5;group.add(light);
   return group;
 }
 function mouse() {
@@ -420,11 +423,11 @@ export default class FestivalWorld {
       for(const c of this.chunks){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       for(const c of this.themeDecor){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       this.spawnIn-=travel;
-      if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const route=this.approved&&this.routeCount%6===0;this.spawnIn=route?32:18+Math.random()*5;if(route)this.addRoute(lane,-147);else{const pattern=obstaclePattern(this.patternIndex++,s.distance);for(const item of pattern.obstacles)this.add(item.kind,item.lane,-147,0,item.appearance);for(let i=0;i<6;i++)this.add('modak',pattern.safeLane,-151-i*3.2);}}
+      if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const routeEvery=s.distance>1200?4:s.distance>600?5:6,route=this.approved&&this.routeCount%routeEvery===0;this.spawnIn=route?Math.max(25,34-s.distance/300):obstacleSpacing(s.distance)+Math.random()*2.5;if(route)this.addRoute(lane,-147);else{const pattern=obstaclePattern(this.patternIndex++,s.distance);for(const item of pattern.obstacles)this.add(item.kind,item.lane,-147,0,item.appearance);for(let i=0;i<6;i++)this.add('modak',pattern.safeLane,-151-i*3.2);}}
       for(const e of this.entities){
         e.mesh.position.z+=travel;
         if(e.kind==='modak'){e.mesh.rotation.y+=dt;e.mesh.position.y=e.elevation+.85+Math.sin(this.time*3+e.mesh.position.z)*.12;}
-        if(e.kind==='om'){e.mesh.rotation.y+=dt*.9;e.mesh.position.y=e.elevation+1.45+Math.sin(this.time*2.4)*.18;}
+        if(e.kind==='om'){e.mesh.rotation.y+=dt*.9;e.mesh.position.y=e.elevation+1.45+Math.sin(this.time*2.4)*.18;const pulse=1+Math.sin(this.time*4)*.08;e.mesh.scale.setScalar(pulse);}
         const dx=Math.abs(s.x-e.lane*3.1),dz=e.mesh.position.z-3;
         if(!e.checked&&dz>(e.kind==='modak'?-.65:e.kind==='cart'?2.75:e.kind==='rooftop'?5.9:1.2)){
           e.checked=true;
