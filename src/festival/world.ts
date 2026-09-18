@@ -8,7 +8,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { loadApprovedModels } from './approved';
 import { resolveMotion } from './rules';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { advance, clears, collect, freshState, hit, move, reward, type Obstacle, type RunState } from './rules';
+import { advance, clears, collect, freshState, hit, move, obstaclePattern, reward, type Obstacle, type RunState } from './rules';
 
 type Entity = { mesh:T.Group; lane:number; kind:Obstacle|'modak'|'ramp'|'rooftop'; checked:boolean; elevation:number };
 const palette = {gold:0xe9aa35, red:0x9e2034, stone:0xba7956, ivory:0xffdfac, pink:0xd8918e};
@@ -127,8 +127,8 @@ export default class FestivalWorld {
   audio:AudioContext|null=null;muted=false;beat=0;gateOptions:string[]=[];
   gateResume:'running'|'gate'='running';boundKey:(e:KeyboardEvent)=>void;boundVisibility:()=>void;
   pointer:{x:number;y:number}|null=null;pointerStart:(e:PointerEvent)=>void;pointerEnd:(e:PointerEvent)=>void;
-  shrine:T.Group; aura:T.Mesh; blessingHalo:T.Sprite; runnerShadow:T.Mesh; themeDecor:T.Group[]=[]; lastMoveTime=-10; fireworks:T.Points[]=[];
-  assetsReady:Promise<void>; approved=false; mixer?:T.AnimationMixer; clips:T.AnimationClip[]=[]; motion=''; routeCount=0; hitTime=0; deathTime=0; introTime=0;
+  shrine:T.Group; aura:T.Mesh; blessingHalo:T.Sprite; blessingGroundAura:T.Group; runnerShadow:T.Mesh; themeDecor:T.Group[]=[]; lastMoveTime=-10; fireworks:T.Points[]=[];
+  assetsReady:Promise<void>; approved=false; mixer?:T.AnimationMixer; clips:T.AnimationClip[]=[]; motion=''; routeCount=0; patternIndex=0; hitTime=0; deathTime=0; introTime=0; blessingVisual=0;
   constructor(public canvas:HTMLCanvasElement,onChange:(s:RunState)=>void,onNotice:(message:string)=>void) {
     this.onChange=onChange;this.onNotice=onNotice;
     this.renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
@@ -168,6 +168,10 @@ export default class FestivalWorld {
     const blessingTexture=new T.TextureLoader().load('/assets/images/blessing_aura.webp');blessingTexture.colorSpace=T.SRGBColorSpace;
     this.blessingHalo=new T.Sprite(new T.SpriteMaterial({map:blessingTexture,color:0xffd36b,transparent:true,opacity:.88,depthWrite:false,depthTest:false,blending:T.AdditiveBlending,toneMapped:false}));
     this.blessingHalo.position.set(0,1.15,.08);this.blessingHalo.scale.setScalar(3.65);this.blessingHalo.visible=false;this.blessingHalo.renderOrder=8;this.runner.g.add(this.blessingHalo);
+    const blessingGroundTexture=new T.TextureLoader().load('/assets/images/golden_blessing_ring.png');blessingGroundTexture.colorSpace=T.SRGBColorSpace;
+    const groundRing=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({map:blessingGroundTexture,transparent:true,opacity:.9,depthWrite:false,depthTest:true,blending:T.AdditiveBlending,toneMapped:false,side:T.DoubleSide}));
+    groundRing.position.y=.03;groundRing.rotation.x=-Math.PI/2;groundRing.scale.setScalar(2.8);groundRing.renderOrder=7;
+    this.blessingGroundAura=new T.Group();this.blessingGroundAura.position.set(0,0,3);this.blessingGroundAura.visible=false;this.blessingGroundAura.add(groundRing);this.scene.add(this.blessingGroundAura);
     const contact=canvasTexture(128,128,c=>{const gradient=c.createRadialGradient(64,64,8,64,64,62);gradient.addColorStop(0,'#251924aa');gradient.addColorStop(.5,'#25192466');gradient.addColorStop(1,'#25192400');c.fillStyle=gradient;c.fillRect(0,0,128,128);});
     this.runnerShadow=new T.Mesh(new T.PlaneGeometry(2.2,1.65),new T.MeshBasicMaterial({map:contact,transparent:true,depthWrite:false,opacity:.8}));this.runnerShadow.rotation.x=-Math.PI/2;this.runnerShadow.position.set(0,.025,3);this.scene.add(this.runnerShadow);
     this.templates={modak:modak(),drum:obstacle('drum'),cart:obstacle('cart'),barrier:obstacle('barrier')};
@@ -249,7 +253,7 @@ export default class FestivalWorld {
       for(let z=-8.8;z<9;z+=.72)mesh(g,'box',0xdfb679,[side*5.38,.12,z],[.3,.3,.65]);
       for(let z=-8.8;z<9;z+=.7)mesh(g,'sphere',z%2>1?0xffbc26:0xe57b17,[side*5.63,.28,z],[.18,.17,.28]);
       for(let index=0;index<3;index++){
-        const z=index*6-6, height=7.5+((index+variant)%3)*1.35;const building=new T.Group();building.position.set(side*(9.8+((index+variant)%2)*.45),0,z);building.rotation.y=-side*Math.PI/2;g.add(building);
+        const z=index*6-6, height=7.5+((index+variant)%3)*1.35,facade=(index+variant+(side===1?1:0))%4;const building=new T.Group();building.position.set(side*(9.8+((index+variant)%2)*.45),0,z);building.rotation.y=-side*Math.PI/2;g.add(building);
         mesh(building,'box',[0xc96955,0x4d8b91,0x9f5f7d,0xb67d49][(index+variant)%4],[0,height/2,-1.8],[5.8,height,3.7]);
         for(const y of [3.2,6.5,height]){mesh(building,'box',0xffdba5,[0,y,.1],[6,.25,.7]);mesh(building,'box',0xc56f40,[0,y-.2,.1],[5.9,.12,.48]);}
         for(const x of [-2.6,2.6]){
@@ -273,6 +277,9 @@ export default class FestivalWorld {
         mesh(building,'box',0x784336,[0,.75,.7],[4.6,.9,1.2]);
         for(let k=0;k<10;k++)mesh(building,'sphere',0xffcf65,[-1.9+k*.4,1.26,.85],[.16,.14,.16]);
         for(let k=0;k<18;k++){const x=-2.5+k*.294;mesh(building,'sphere',0xffaa21,[x,3.82-Math.sin(k/17*Math.PI)*.55,.57],[.14,.13,.14]);}
+        if(facade===1){const entry=new T.Mesh(new T.TorusGeometry(1.15,.15,8,24,Math.PI),mat(0xffd27c,.12));entry.position.set(0,1.55,1.25);building.add(entry);}
+        if(facade===2)for(const x of [-2,2]){mesh(building,'sphere',0xffc24f,[x,2.2,1.28],[.22,.28,.18],.7);mesh(building,'cylinder',0x704534,[x,1.86,1.2],[.045,.7,.045]);}
+        if(facade===3){mesh(building,'box',0x6e4547,[0,1.35,1.29],[4.25,2.05,.12]);for(let y=.48;y<2.3;y+=.28)mesh(building,'box',0xc78a68,[0,y,1.37],[4.1,.035,.04]);}
         for(let level=0;level<5;level++){
           const width=2.25-level*.37;mesh(building,'cylinder',level%2?0xf1ba69:0xc57048,[0,height+.3+level*.48,-1.2],[width,.48,width*.85]);
           mesh(building,'torus',palette.gold,[0,height+.56+level*.48,-1.2],[width,.65,width*.85]).rotation.x=Math.PI/2;
@@ -377,12 +384,12 @@ export default class FestivalWorld {
   seed(){for(const e of this.entities)this.scene.remove(e.mesh);this.entities=[];this.routeCount=0;for(const lane of [-1,0,1])for(let z=-10-lane*2;z>-34;z-=7)this.add('modak',lane,z);this.add('drum',-1,-42);this.add('barrier',0,-54);this.add('drum',1,-66,0,'marketCart');this.add('cart',0,-80);}
   addRoute(lane:number,z:number){this.add('ramp',lane,z);this.add('cart',lane,z-4.1);this.add('rooftop',lane,z-11.9);for(let i=0;i<6;i++)this.add('modak',lane,z-3-i*2.4,2.67);}
   add(kind:Entity['kind'],lane:number,z:number,elevation=0,appearance?:string){const selected=this.templates[appearance||kind]||this.templates[kind];if(!selected)return;const mesh=selected.clone();mesh.position.set(lane*3.1,kind==='modak'?.75+elevation:0,z);mesh.userData.appearance=selected===this.templates[appearance||kind]?(appearance||kind):kind;this.scene.add(mesh);this.entities.push({mesh,lane,kind,checked:false,elevation});}
-  start(theme=0) {if(!this.approved){this.notice('Loading the approved 3D models…');return;}this.startTheme=theme;this.state=freshState(theme);this.state.status='running';this.spawnIn=18;this.lastMoveTime=-10;this.hitTime=0;this.deathTime=0;this.introTime=1.45;this.motion='';this.seed();const portrait=this.camera.aspect<.8;this.camera.position.set(-2.8,portrait?4.4:2.75,portrait?12.0:8.4);this.clock.getDelta();this.enableAudio();this.notice('Ganpati Bappa Morya!');this.tone(523.25,.18);this.onChange({...this.state});}
-  menu(){this.state=freshState(this.startTheme);this.hitTime=0;this.deathTime=0;this.introTime=0;this.motion='';this.seed();this.onChange({...this.state});}
+  start(theme=0) {if(!this.approved){this.notice('Loading the approved 3D models…');return;}this.startTheme=theme;this.state=freshState(theme);this.state.status='running';this.spawnIn=18;this.patternIndex=0;this.lastMoveTime=-10;this.hitTime=0;this.deathTime=0;this.introTime=1.45;this.blessingVisual=0;this.motion='';this.seed();const portrait=this.camera.aspect<.8;this.camera.position.set(-2.8,portrait?4.4:2.75,portrait?12.0:8.4);this.clock.getDelta();this.enableAudio();this.notice('Ganpati Bappa Morya!');this.tone(523.25,.18);this.onChange({...this.state});}
+  menu(){this.state=freshState(this.startTheme);this.patternIndex=0;this.hitTime=0;this.deathTime=0;this.introTime=0;this.blessingVisual=0;this.motion='';this.seed();this.onChange({...this.state});}
   pause(){if(this.state.status==='running'||this.state.status==='gate'){this.gateResume=this.state.status;this.state.status='paused';this.onChange({...this.state});}}
   resume(){if(this.state.status==='paused'){this.state.status=this.gateResume;this.clock.getDelta();this.onChange({...this.state});}}
   action(action:'left'|'right'|'jump'|'slide'){if(this.state.status==='running'&&this.introTime<=0){this.hitTime=0;if(action==='left'||action==='right')this.lastMoveTime=this.state.elapsed;}move(this.state,action);}
-  choose(value:string){if(this.state.status!=='gate')return;this.state.status='running';if(value==='modak'){collect(this.state);this.celebrate('Vighna cleared!');}else{this.state.combo=0;this.state.blessing=0;this.state.maha=false;this.state.invincible=0;hit(this.state);this.notice(value==='timeout'?'The gate closed. Keep going!':'Look for the golden modak!');}this.onChange({...this.state});}
+  choose(value:string){if(this.state.status!=='gate')return;this.state.status='running';if(value==='modak'){collect(this.state);const result=reward(this.state);this.state.blessing=10;this.notice(result==='maha'?'Correct! Maha Aashirwad activated!':'Correct! Blessing Mode activated!');this.tone(660,.22);}else{this.state.combo=0;this.state.blessing=0;this.state.maha=false;this.state.invincible=0;hit(this.state);this.notice(value==='timeout'?'The gate closed. Keep going!':'That answer was not correct. Keep going!');}this.onChange({...this.state});}
   celebrate(prefix:string){const result=reward(this.state);this.notice(result==='maha'?'Maha Aashirwad! Double score':result==='blessing'?'Blessing Mode! Ganpati Bappa Morya!':`${prefix}  +150`);this.tone(660,.17);}
   notice(message:string){this.currentNotice=message;this.noticeTime=2.7;this.onNotice(message);}
   enableAudio(){if(!this.audio){try{this.audio=new AudioContext();}catch{}}if(this.audio?.state==='suspended')void this.audio.resume();}
@@ -400,13 +407,13 @@ export default class FestivalWorld {
       travel=result.travel;s.distance=before.distance+travel;s.score=before.score+travel*(s.maha&&s.blessing>0?4:2);
       if(result.blocked>=0){const obstacle=this.entities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitTime=0;this.onNotice('');this.tone(105,.7);}else{this.hitTime=1.6;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
     }
-    if(was==='running'&&s.status==='gate'){s.gateTime=45;s.nextGate=s.distance+750;this.gateOptions=['coconut','modak','flower'].sort(()=>Math.random()-.5);this.tone(880,.3);}
+    if(was==='running'&&s.status==='gate'){s.gateTime=45;this.gateOptions=['coconut','modak','flower'].sort(()=>Math.random()-.5);this.tone(880,.3);}
     if(s.status==='gate'&&s.gateTime===0)this.choose('timeout');
     if(s.status==='running'){
       for(const c of this.chunks){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       for(const c of this.themeDecor){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       this.spawnIn-=travel;
-      if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const route=this.approved&&this.routeCount%5===0;this.spawnIn=route?30:9+Math.random()*3;if(route)this.addRoute(lane,-147);else{const choices:{kind:Obstacle;appearance?:string}[]=[{kind:'drum'},{kind:'drum',appearance:'marketCart'},{kind:'cart'},{kind:'barrier'}],choice=choices[Math.floor(Math.random()*choices.length)];this.add(choice.kind,lane,-147,0,choice.appearance);for(let i=0;i<7;i++)this.add('modak',(lane+i%2+2)%3-1,-154-i*4.2);}}
+      if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const route=this.approved&&this.routeCount%6===0;this.spawnIn=route?32:18+Math.random()*5;if(route)this.addRoute(lane,-147);else{const pattern=obstaclePattern(this.patternIndex++,s.distance);for(const item of pattern.obstacles)this.add(item.kind,item.lane,-147,0,item.appearance);for(let i=0;i<6;i++)this.add('modak',pattern.safeLane,-151-i*3.2);}}
       for(const e of this.entities){
         e.mesh.position.z+=travel;
         if(e.kind==='modak'){e.mesh.rotation.y+=dt; e.mesh.position.y=e.elevation+.85+Math.sin(this.time*3+e.mesh.position.z)*.12;}
@@ -429,13 +436,14 @@ export default class FestivalWorld {
     const running=s.status==='running', phase=this.time*(s.blessing>0?22:17);
     this.runner.g.position.x=s.x;this.runner.g.position.y=s.jump+(s.ground>0?.14:0)+(running?Math.abs(Math.sin(phase))*.07:Math.sin(this.time*2)*.025);
     this.runnerShadow.position.set(s.x,s.ground+.025,3);this.runnerShadow.scale.setScalar(1+Math.max(0,s.jump-s.ground)*.12);(this.runnerShadow.material as T.MeshBasicMaterial).opacity=.8/(1+Math.max(0,s.jump-s.ground)*.7);
+    this.blessingGroundAura.position.set(s.x,s.ground,3);this.blessingGroundAura.rotation.y+=dt*.22;const blessingTarget=s.blessing>0?1:0;this.blessingVisual+=(blessingTarget-this.blessingVisual)*Math.min(1,dt*(blessingTarget?6:2.8));this.blessingGroundAura.visible=this.blessingVisual>.015;const ring=this.blessingGroundAura.children[0] as T.Mesh,ringMaterial=ring.material as T.MeshBasicMaterial;ringMaterial.opacity=this.blessingVisual*(s.maha?.98:.82);const ringPulse=2.8*(1+Math.sin(this.time*3.2)*.035*this.blessingVisual);ring.scale.setScalar(ringPulse);
     this.runner.g.scale.y=1;this.runner.g.rotation.z=(s.lane*3.1-s.x)*-.08;
     if(s.status==='dying'){this.deathTime=Math.max(0,this.deathTime-dt);if(this.deathTime===0){s.status='over';this.onChange({...s});}}
     if(this.mixer&&s.status!=='paused'&&s.status!=='gate'&&s.status!=='over'){const airborne=s.jump>s.ground+.05;this.hitTime=Math.max(0,this.hitTime-dt);const motion=s.status==='dying'?'Death':introActive?'Intro':!running?'Idle':this.hitTime>0?'Hit':s.slide>0?'Slide':airborne?'Jump':'Run';if(motion!==this.motion){const previous=this.motion?this.mixer.clipAction(T.AnimationClip.findByName(this.clips,this.motion)):undefined;const clip=T.AnimationClip.findByName(this.clips,motion);if(clip){const action=this.mixer.clipAction(clip);action.enabled=true;action.setEffectiveWeight(1);action.setEffectiveTimeScale(1);if(motion==='Jump'||motion==='Slide'||motion==='Hit'||motion==='Death'||motion==='Intro'){action.setLoop(T.LoopOnce,1);action.clampWhenFinished=true;}else{action.setLoop(T.LoopRepeat,Infinity);action.clampWhenFinished=false;}if(motion==='Slide')action.timeScale=clip.duration/.85;if(motion==='Intro')action.timeScale=Math.max(.55,clip.duration/1.45);action.reset().fadeIn(.16).play();previous?.fadeOut(.16);}this.motion=motion;}this.mixer.update(dt);}
     this.runner.feet.children.forEach((f,i)=>{f.position.z=running?Math.sin(phase+i*Math.PI)*.24:0;f.position.y=.15+(running?Math.max(0,Math.cos(phase+i*Math.PI))*.15:0);});
     this.runner.tail.rotation.y=Math.sin(this.time*6)*.15;
     const p=this.runner.cape.geometry.attributes.position;for(let i=0;i<p.count;i++)p.setZ(i,Math.sin(p.getX(i)*6+this.time*10)*.045*(1-p.getY(i)));p.needsUpdate=true;
-    this.runner.g.visible=true;this.aura.visible=false;this.blessingHalo.visible=s.blessing>0;const haloPulse=(s.maha?4.05:3.65)*(1+Math.sin(this.time*4.2)*.035);this.blessingHalo.scale.setScalar(haloPulse);(this.blessingHalo.material as T.SpriteMaterial).rotation=this.time*(s.maha?.42:.25);(this.blessingHalo.material as T.SpriteMaterial).opacity=s.maha?.98:.82;
+    this.runner.g.visible=true;this.aura.visible=false;this.blessingHalo.visible=false;
     const pos=this.starfield.geometry.attributes.position;if(running)for(let i=0;i<pos.count;i++){let z=pos.getZ(i)+travel*.7;if(z>12)z=-140;pos.setZ(i,z);pos.setY(i,(pos.getY(i)+dt*.15)%14);}pos.needsUpdate=true;
     (this.starfield.material as T.PointsMaterial).color.setHex(s.maha?0xff7f9a:0xffd078);(this.starfield.material as T.PointsMaterial).size=s.maha?.17:.075;
     if(s.maha&&running)for(let i=0;i<pos.count;i++)pos.setY(i,(pos.getY(i)-dt*2+14)%14);

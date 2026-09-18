@@ -10,7 +10,7 @@ export interface RunState {
 export function freshState(theme = 0): RunState {
   return {status:'ready', score:0, modaks:0, distance:0, elapsed:0, hearts:3,
     combo:0, bestCombo:0, blessing:0, maha:false, lane:0, x:0, jump:0,
-    velocityY:0, slide:0, ground:0, invincible:0, gateTime:5, nextGate:260, theme};
+    velocityY:0, slide:0, ground:0, invincible:0, gateTime:45, nextGate:120, theme};
 }
 export function advance(s: RunState, dt: number, startingTheme: number) {
   if (s.status === 'gate') { s.gateTime = Math.max(0, s.gateTime - dt); return; }
@@ -27,7 +27,7 @@ export function advance(s: RunState, dt: number, startingTheme: number) {
   s.slide = Math.max(0, s.slide-dt); s.invincible = Math.max(0, s.invincible-dt);
   s.blessing = Math.max(0, s.blessing-dt); if (!s.blessing) s.maha = false;
   s.theme = (startingTheme + Math.floor(s.distance/500)) % THEMES.length;
-  if (s.distance >= s.nextGate) { s.status = 'gate'; s.gateTime = 5; s.nextGate += 260; }
+  if (s.elapsed >= s.nextGate) { s.status = 'gate'; s.gateTime = 45; s.nextGate += 120; }
   return travel;
 }
 export function move(s:RunState, action:'left'|'right'|'jump'|'slide') {
@@ -52,6 +52,22 @@ export function hit(s:RunState) {
 }
 export function clears(s:RunState, kind:Obstacle) {
   return s.blessing>0 || (kind==='drum' && s.jump>1.1) || (kind==='barrier' && s.slide>0);
+}
+
+export type PatternObstacle={lane:-1|0|1;kind:Obstacle;appearance?:'marketCart'};
+export type RunnerPattern={safeLane:-1|0|1;obstacles:PatternObstacle[]};
+const RUNNER_PATTERNS:RunnerPattern[]=[
+  {safeLane:-1,obstacles:[{lane:0,kind:'drum'}]},
+  {safeLane:1,obstacles:[{lane:-1,kind:'barrier'},{lane:0,kind:'drum'}]},
+  {safeLane:0,obstacles:[{lane:-1,kind:'drum',appearance:'marketCart'},{lane:1,kind:'barrier'}]},
+  {safeLane:-1,obstacles:[{lane:0,kind:'cart'},{lane:1,kind:'drum'}]},
+  {safeLane:1,obstacles:[{lane:-1,kind:'cart'},{lane:0,kind:'barrier'}]},
+  {safeLane:0,obstacles:[{lane:-1,kind:'drum'},{lane:1,kind:'drum',appearance:'marketCart'}]},
+];
+/** Deterministic rows keep at least one lane open and unlock denser layouts over distance. */
+export function obstaclePattern(index:number,distance:number):RunnerPattern{
+  const available=distance<250?2:distance<650?4:RUNNER_PATTERNS.length;
+  return RUNNER_PATTERNS[index%available];
 }
 
 /** The road moves toward a runner positioned at z=3. */

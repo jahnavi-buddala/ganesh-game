@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 const source=readFileSync(new URL('../src/festival/rules.ts',import.meta.url),'utf8');
 const {outputText}=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}});
-const {freshState,advance,move,collect,reward,hit,clears,routeSurface,resolveMotion}=await import('data:text/javascript;base64,'+Buffer.from(outputText).toString('base64'));
+const {freshState,advance,move,collect,reward,hit,clears,obstaclePattern,routeSurface,resolveMotion}=await import('data:text/javascript;base64,'+Buffer.from(outputText).toString('base64'));
 let passed=0;
 function check(name,fn){fn();passed++;console.log('PASS '+name);}
 const running=()=>Object.assign(freshState(),{status:'running'});
@@ -14,7 +14,8 @@ check('three hits end the run; grace period prevents duplicate hits',()=>{const 
 check('blessings at combo three and five',()=>{const s=running();reward(s);reward(s);assert.equal(reward(s),'blessing');assert.equal(s.blessing,10);assert.equal(hit(s),false);reward(s);assert.equal(reward(s),'maha');assert.equal(s.maha,true);s.blessing=4;reward(s);assert.equal(s.blessing,4);});
 check('modak scoring doubles during Maha Aashirwad',()=>{const s=running();collect(s);assert.equal(s.score,50);s.maha=true;s.blessing=10;collect(s);assert.equal(s.score,150);assert.equal(s.modaks,2);});
 check('pause freezes all gameplay timers',()=>{const s=running();s.blessing=8;s.slide=.4;s.status='paused';const before={...s};advance(s,1,0);assert.deepEqual(s,before);});
-check('gate freezes distance and counts down only while active',()=>{const s=running();s.distance=259.9;advance(s,.02,0);assert.equal(s.status,'gate');const d=s.distance;advance(s,1,0);assert.equal(s.distance,d);assert.equal(s.gateTime,4);s.status='paused';advance(s,1,0);assert.equal(s.gateTime,4);});
+check('question appears every 120 seconds and freezes gameplay while active',()=>{const s=running();s.elapsed=119.9;advance(s,.1,0);assert.equal(s.status,'gate');assert.equal(s.nextGate,240);const d=s.distance;advance(s,1,0);assert.equal(s.distance,d);assert.equal(s.gateTime,44);s.status='paused';advance(s,1,0);assert.equal(s.gateTime,44);s.status='running';s.elapsed=239.9;advance(s,.1,0);assert.equal(s.status,'gate');assert.equal(s.nextGate,360);});
+check('every obstacle pattern leaves its promised lane open',()=>{for(let distance=0;distance<=900;distance+=150)for(let i=0;i<18;i++){const p=obstaclePattern(i,distance);assert.ok(!p.obstacles.some(o=>o.lane===p.safeLane));assert.ok(new Set(p.obstacles.map(o=>o.lane)).size===p.obstacles.length);}});
 check('time-based scoring remains consistent at different frame rates',()=>{const simulate=fps=>{const s=running();for(let i=0;i<fps*10;i++)advance(s,1/fps,0);return s;};const a=simulate(30),b=simulate(120);assert.ok(Math.abs(a.distance-b.distance)<.1);assert.ok(Math.abs(a.score-b.score)<.2);assert.ok(Math.abs(a.elapsed-b.elapsed)<1e-8);});
 check('themes cycle and restart clears run state',()=>{const s=running();s.distance=501;s.nextGate=999;advance(s,.01,4);assert.equal(s.theme,0);const reset=freshState(3);assert.equal(reset.theme,3);assert.equal(reset.hearts,3);assert.equal(reset.score,0);assert.equal(reset.combo,0);});
 check('jump reaches a vehicle roof and can restart from that roof',()=>{const s=running();move(s,'jump');let peak=0;for(let i=0;i<35;i++){advance(s,1/60,0);peak=Math.max(peak,s.jump);}assert.ok(peak>2.67);s.ground=2.67;s.jump=2.67;s.velocityY=0;move(s,'jump');assert.ok(s.velocityY>0);for(let i=0;i<90;i++)advance(s,1/60,0);assert.equal(s.jump,2.67);});
