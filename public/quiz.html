@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ganesh Chaturthi Kid-Friendly 45s Adrenaline Quiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #120702;
+      --bg-card: rgba(38, 15, 5, 0.95);
+      --gold-primary: #ffb300;
+      --gold-light: #ffe082;
+      --gold-glow: rgba(255, 179, 0, 0.5);
+      --accent-red: #ff3d00;
+      --accent-green: #4caf50;
+      --text-main: #fff8e1;
+      --text-muted: #d7ccc8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at 50% 15%, #2c1103 0%, #120701 60%, #060201 100%);
+      color: var(--text-main);
+      font-family: 'Poppins', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header.topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+      background: rgba(18, 7, 2, 0.9);
+      border-bottom: 2px solid rgba(255, 179, 0, 0.3);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-seal {
+      font-size: 2.2rem;
+      color: var(--gold-primary);
+      text-shadow: 0 0 15px var(--gold-glow);
+    }
+    .brand h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.25rem;
+      color: var(--gold-light);
+      letter-spacing: 1.5px;
+    }
+    .brand p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 12px;
+    }
+    .btn-pill {
+      background: rgba(255, 179, 0, 0.12);
+      border: 1px solid rgba(255, 179, 0, 0.35);
+      color: var(--gold-light);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-pill:hover {
+      background: rgba(255, 179, 0, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 30px 20px 60px;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 2px solid rgba(255, 179, 0, 0.35);
+      border-radius: 20px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6), inset 0 0 25px rgba(255, 153, 0, 0.08);
+      padding: 36px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* INTRO VIEW */
+    #intro-view {
+      text-align: center;
+      max-width: 840px;
+    }
+    .badge-eyebrow {
+      display: inline-block;
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid #66bb6a;
+      color: #c8e6c9;
+      padding: 5px 16px;
+      border-radius: 16px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
+    .hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: 2.2rem;
+      color: #fff;
+      margin-bottom: 16px;
+      text-shadow: 0 2px 12px rgba(255, 179, 0, 0.4);
+    }
+    .hero-desc {
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .mode-select-container {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .mode-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1.5px solid rgba(255, 179, 0, 0.3);
+      color: var(--text-main);
+      padding: 14px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: left;
+      flex: 1;
+      min-width: 240px;
+      transition: all 0.2s;
+    }
+    .mode-btn:hover {
+      background: rgba(255, 179, 0, 0.15);
+      border-color: var(--gold-light);
+    }
+    .mode-btn.active {
+      background: rgba(255, 143, 0, 0.25);
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 16px rgba(255, 143, 0, 0.35);
+    }
+    .mode-btn strong { display: block; font-size: 1rem; color: var(--gold-light); margin-bottom: 4px; }
+    .mode-btn span { font-size: 0.8rem; color: var(--text-muted); }
+
+    .adrenaline-callout {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(255, 61, 0, 0.12);
+      border: 1px solid rgba(255, 61, 0, 0.4);
+      border-radius: 12px;
+      padding: 16px 20px;
+      text-align: left;
+      margin-bottom: 28px;
+    }
+    .adrenaline-callout .icon { font-size: 2.2rem; }
+    .adrenaline-callout h3 { color: #ff8a65; font-size: 1.1rem; margin-bottom: 4px; }
+    .adrenaline-callout p { color: #fbe9e7; font-size: 0.95rem; line-height: 1.4; margin: 0; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255, 179, 0, 0.2);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .stat-box .num { font-size: 1.6rem; font-weight: 800; color: var(--gold-light); display: block; }
+    .stat-box .lbl { font-size: 0.78rem; color: #bcaaa4; }
+
+    .btn-start {
+      background: linear-gradient(135deg, #ffb300, #ff8f00, #e65100);
+      color: #1b0700;
+      border: none;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      padding: 16px 36px;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(255, 143, 0, 0.4);
+      transition: all 0.25s;
+    }
+    .btn-start:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(255, 143, 0, 0.65);
+      filter: brightness(1.1);
+    }
+
+    /* PLAYING VIEW */
+    #playing-view { display: none; width: 100%; }
+    .hud-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(20, 8, 2, 0.85);
+      border: 1px solid rgba(255, 179, 0, 0.25);
+      border-radius: 12px;
+      padding: 12px 24px;
+      margin-bottom: 16px;
+    }
+    .hud-col { display: flex; flex-direction: column; align-items: center; }
+    .hud-col .lbl { font-size: 0.7rem; color: #bcaaa4; letter-spacing: 1px; }
+    .hud-col .val { font-size: 1.2rem; font-weight: 700; color: var(--gold-light); }
+
+    .diff-badge-pill {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      margin-top: 2px;
+    }
+    .diff-badge-pill.easy { background: rgba(76, 175, 80, 0.25); border: 1px solid #4caf50; color: #a5d6a7; }
+    .diff-badge-pill.medium { background: rgba(255, 152, 0, 0.25); border: 1px solid #ff9800; color: #ffcc80; }
+    .diff-badge-pill.hard { background: rgba(233, 30, 99, 0.25); border: 1px solid #e91e63; color: #f48fb1; }
+
+    /* 45s ADRENALINE TIMER */
+    .adrenaline-timer-panel {
+      background: rgba(32, 12, 3, 0.95);
+      border: 2px solid rgba(255, 179, 0, 0.3);
+      border-radius: 14px;
+      padding: 14px 20px;
+      margin-bottom: 22px;
+      transition: all 0.3s;
+    }
+    .adrenaline-timer-panel.surge {
+      border-color: var(--accent-red);
+      box-shadow: 0 0 24px rgba(255, 61, 0, 0.5);
+      animation: pulseAlert 1s infinite alternate;
+    }
+    @keyframes pulseAlert {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.008); }
+    }
+    .timer-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .timer-clock {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .timer-clock .time-num {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--gold-light);
+      font-variant-numeric: tabular-nums;
+    }
+    .adrenaline-timer-panel.surge .time-num {
+      color: var(--accent-red);
+      text-shadow: 0 0 12px rgba(255, 61, 0, 0.8);
+      animation: flashTime 0.4s infinite alternate;
+    }
+    @keyframes flashTime {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.08); }
+    }
+    .time-badge {
+      background: rgba(255, 61, 0, 0.25);
+      border: 1px solid var(--accent-red);
+      color: #ffab91;
+      padding: 4px 12px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .timer-track-bg {
+      width: 100%;
+      height: 10px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .timer-track-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #ff8f00, #ffb300);
+      transition: width 1s linear;
+    }
+    .timer-track-fill.surge-fill {
+      background: linear-gradient(90deg, #d50000, #ff5252);
+      box-shadow: 0 0 10px #ff1744;
+    }
+
+    /* QUESTION CARD */
+    .q-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .question-title {
+      font-size: 1.45rem;
+      line-height: 1.5;
+      color: #fff;
+      margin-bottom: 26px;
+      font-weight: 600;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .option-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1.5px solid rgba(255, 179, 0, 0.25);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      color: var(--text-main);
+      text-align: left;
+      transition: all 0.2s;
+    }
+    .option-btn:hover:not(.locked) {
+      background: rgba(255, 179, 0, 0.15);
+      border-color: var(--gold-light);
+      transform: translateY(-2px);
+    }
+    .option-btn.selected {
+      background: rgba(255, 143, 0, 0.25);
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 16px rgba(255, 143, 0, 0.35);
+    }
+    .option-btn.correct {
+      background: rgba(46, 125, 50, 0.35) !important;
+      border-color: #66bb6a !important;
+      color: #e8f5e9 !important;
+    }
+    .option-btn.wrong {
+      background: rgba(198, 40, 40, 0.35) !important;
+      border-color: #ef5350 !important;
+      color: #ffebee !important;
+    }
+    .opt-letter {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 179, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: var(--gold-light);
+      flex-shrink: 0;
+    }
+    .option-btn.selected .opt-letter {
+      background: var(--gold-primary);
+      color: #120701;
+    }
+
+    .explanation-card {
+      display: none;
+      background: rgba(255, 179, 0, 0.08);
+      border-left: 4px solid var(--gold-primary);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+    .explanation-card.correct-exp {
+      border-left-color: var(--accent-green);
+      background: rgba(76, 175, 80, 0.1);
+    }
+    .explanation-card h4 {
+      color: var(--gold-light);
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+    }
+    .explanation-card p {
+      color: #f5f5f5;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 179, 0, 0.15);
+    }
+    .btn-reveal-now {
+      background: rgba(255, 179, 0, 0.2);
+      border: 1.5px solid var(--gold-primary);
+      color: var(--gold-light);
+      padding: 12px 24px;
+      border-radius: 20px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-next {
+      display: none;
+      background: linear-gradient(135deg, #ff8f00, #ff6f00);
+      color: #120701;
+      border: none;
+      padding: 13px 28px;
+      border-radius: 26px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    /* STORY MODAL */
+    #story-view { display: none; width: 100%; max-width: 900px; }
+    .story-nav-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 18px 0;
+    }
+    .story-pill-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 179, 0, 0.25);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .story-pill-btn.active {
+      background: var(--gold-primary);
+      color: #120701;
+      font-weight: bold;
+    }
+    .chapter-display h3 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.5rem;
+      color: var(--gold-light);
+      margin-bottom: 16px;
+    }
+    .chapter-display p {
+      font-size: 1.05rem;
+      line-height: 1.8;
+      color: var(--text-main);
+      margin-bottom: 18px;
+      text-align: justify;
+    }
+
+    /* SUMMARY VIEW */
+    #summary-view { display: none; text-align: center; max-width: 860px; }
+    .summary-score-val {
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: var(--gold-light);
+      text-shadow: 0 0 20px var(--gold-glow);
+    }
+    .review-list {
+      margin-top: 30px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .review-item {
+      background: rgba(0,0,0,0.35);
+      border-left: 4px solid var(--gold-primary);
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+    .review-item.pass { border-left-color: var(--accent-green); }
+    .review-item.fail { border-left-color: var(--accent-red); }
+
+    @media (max-width: 768px) {
+      .options-grid { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .brand h1 { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-seal">ॐ</span>
+      <div>
+        <h1>GANESH CHATURTHI KID-FRIENDLY 45s QUIZ</h1>
+        <p>3 Easy, 1 Medium, 2 Hard · 45s Adrenaline Delay</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn-pill" id="toggle-story-btn" onclick="toggleStory()">📖 Read Story</button>
+      <button class="btn-pill" id="toggle-sound-btn" onclick="toggleAudio()">🔊 Sound ON</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- INTRO CARD -->
+    <section id="intro-view" class="card">
+      <span class="badge-eyebrow">🧒 KID-FRIENDLY & BALANCED FUN</span>
+      <h2 class="hero-title">The Sacred Legend of Lord Ganesha</h2>
+      <p class="hero-desc">
+        A wonderful, joyful story challenge for young champions! Learn how Mother Parvati created Ganesha from golden turmeric, how Ganesha wrote the great story with his broken tusk, and how he won the race around the universe with his wise heart.
+      </p>
+
+      <!-- Mode Selector -->
+      <div class="mode-select-container">
+        <button class="mode-btn active" id="mode-btn-balanced" onclick="setQuizMode('balanced')">
+          <strong>🎯 Kid's Balanced Mode (6 Questions)</strong>
+          <span>Exactly 3 Easy + 1 Medium + 2 Hard questions!</span>
+        </button>
+        <button class="mode-btn" id="mode-btn-all" onclick="setQuizMode('all')">
+          <strong>🏆 Grand Marathon (All 50 Questions)</strong>
+          <span>Complete set of 20 Easy, 15 Medium, and 15 Hard questions.</span>
+        </button>
+      </div>
+
+      <div class="adrenaline-callout">
+        <div class="icon">⏱️</div>
+        <div>
+          <h3>The 45-Second Adrenaline Pacing</h3>
+          <p>
+            Each question gives students a generous <strong>45 seconds</strong> to think and explore. In the final 15 seconds, adrenaline surge mode ignites with exciting heartbeat pulses!
+          </p>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="num">20</span>
+          <span class="lbl">⭐ Easy Questions</span>
+        </div>
+        <div class="stat-box">
+          <span class="num">15</span>
+          <span class="lbl">⭐⭐ Medium Questions</span>
+        </div>
+        <div class="stat-box">
+          <span class="num">15</span>
+          <span class="lbl">⭐⭐⭐ Hard Questions</span>
+        </div>
+        <div class="stat-box">
+          <span class="num">45s</span>
+          <span class="lbl">Per Question</span>
+        </div>
+      </div>
+
+      <button class="btn-start" onclick="startQuiz()">
+        START BALANCED QUIZ (3 Easy, 1 Med, 2 Hard) ▶
+      </button>
+    </section>
+
+    <!-- PLAYING CARD -->
+    <section id="playing-view" class="card">
+      <div class="hud-bar">
+        <div class="hud-col">
+          <span class="lbl">QUESTION</span>
+          <span class="val" id="hud-q-num">1 / 6</span>
+        </div>
+        <div class="hud-col">
+          <span class="lbl">DIFFICULTY</span>
+          <span id="hud-diff" class="diff-badge-pill easy">⭐ Easy</span>
+        </div>
+        <div class="hud-col">
+          <span class="lbl">SCORE</span>
+          <span class="val" id="hud-score">0</span>
+        </div>
+        <div class="hud-col">
+          <span class="lbl">COMBO</span>
+          <span class="val" id="hud-combo">×0</span>
+        </div>
+        <div class="hud-col">
+          <span class="lbl">MODAKS</span>
+          <span class="val" id="hud-modaks">🥟 0</span>
+        </div>
+      </div>
+
+      <!-- 45s Adrenaline Bar -->
+      <div class="adrenaline-timer-panel" id="timer-panel">
+        <div class="timer-info-row">
+          <div class="timer-clock">
+            <span id="timer-icon">⏳</span>
+            <span class="time-num" id="time-display">45s</span>
+            <span style="font-size: 0.8rem; color: #bcaaa4;">ADRENALINE TIMER</span>
+          </div>
+          <div id="surge-indicator" class="time-badge" style="display: none;">
+            🔥 ADRENALINE SURGE! 15s REMAINING!
+          </div>
+        </div>
+        <div class="timer-track-bg">
+          <div class="timer-track-fill" id="timer-fill"></div>
+        </div>
+      </div>
+
+      <!-- Question Content -->
+      <div class="q-meta">
+        <span class="diff-badge-pill" id="q-diff-badge">⭐ Easy</span>
+        <span style="font-size: 0.8rem; color: #bcaaa4;" id="q-category">Ganesha Lore</span>
+      </div>
+
+      <h3 class="question-title" id="q-text">Question text will load here...</h3>
+
+      <div class="options-grid" id="options-container">
+        <!-- 4 Options dynamically injected -->
+      </div>
+
+      <div class="explanation-card" id="exp-card">
+        <h4 id="exp-badge">🕉️ STORY REVELATION</h4>
+        <p id="exp-text">Lore explanation will display here.</p>
+      </div>
+
+      <div class="action-row">
+        <span id="status-hint" style="font-size: 0.85rem; color: #bcaaa4;">Select an answer to lock it in.</span>
+        <div>
+          <button class="btn-reveal-now" id="btn-reveal" onclick="revealAnswer()" disabled>Lock & Reveal Now</button>
+          <button class="btn-next" id="btn-next" onclick="nextQuestion()">Next Question (45s) →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STORY VIEW -->
+    <section id="story-view" class="card">
+      <h2 style="font-family: 'Cinzel', serif; color: var(--gold-light); text-align: center; margin-bottom: 6px;">The Sacred Legend of Lord Ganesha</h2>
+      <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">A Story of Love, Wisdom, and Courage for Young Champions</p>
+      <div class="story-nav-pills" id="story-pills"></div>
+      <div class="chapter-display" id="chapter-content"></div>
+      <div style="margin-top: 30px; text-align: center;">
+        <button class="btn-start" onclick="toggleStory()">Return to Quiz</button>
+      </div>
+    </section>
+
+    <!-- SUMMARY VIEW -->
+    <section id="summary-view" class="card">
+      <div style="font-size: 3rem; color: var(--gold-primary);">ॐ</div>
+      <h2 style="font-family: 'Cinzel', serif; font-size: 2.2rem; color: #fff; margin-bottom: 10px;">Divine Journey Complete!</h2>
+      <p style="color: var(--gold-light); margin-bottom: 24px;">May Lord Vighnaharta bless your studies and fill your heart with joy!</p>
+      
+      <div style="background: rgba(0,0,0,0.4); border-radius: 14px; padding: 24px; margin-bottom: 30px;">
+        <span style="font-size: 0.85rem; color: #bcaaa4; letter-spacing: 1px;">FINAL SCORE</span>
+        <div class="summary-score-val" id="final-score">0</div>
+        <p id="final-stats" style="margin-top: 10px; color: var(--text-main); font-size: 1.1rem;"></p>
+      </div>
+
+      <button class="btn-start" onclick="startQuiz()">PLAY AGAIN ↻</button>
+
+      <div class="review-list" id="review-list"></div>
+    </section>
+  </main>
+
+  <script>
+    // Embedded 12 Chapters Story Lore
+    const STORY_CHAPTERS = [
+      { title: "Chapter 1: The Golden Figurine", text: "Mother Parvati lovingly shaped a handsome boy from golden turmeric and sandalwood paste from her body, breathed life into him, and asked him to guard the doorway while she bathed." },
+      { title: "Chapter 2: Standoff at the Door", text: "Lord Shiva returned. The brave young boy politely but firmly refused entry to Shiva, keeping his sacred promise to his mother." },
+      { title: "Chapter 3: The Big Clash", text: "Infused with Parvati's cosmic strength, the brave boy deflected the weapons of Shiva's Ganas and King Indra's celestial army with his wooden staff." },
+      { title: "Chapter 4: Shiva's Trident", text: "Lord Shiva stepped onto the battlefield. In the climactic struggle, Shiva threw his three-pronged spear, the Trishula, severing the boy's head." },
+      { title: "Chapter 5: Mother Parvati's Demand", text: "Heartbroken, Parvati threatened to end the world unless her son was brought back to life and honored as Prathama Pujya (worshiped first among all gods)." },
+      { title: "Chapter 6: Elephant Head from North", text: "Messengers traveled North—the holy direction of wisdom—and found a peaceful elephant sleeping facing north. Shiva gently placed the elephant head onto the boy and revived him." },
+      { title: "Chapter 7: Ganapati & Vighnaharta", text: "Shiva named him Ganapati (Leader of the Ganas) and Vighnaharta (Remover of Obstacles). His rebirth is celebrated on Ganesh Chaturthi." },
+      { title: "Chapter 8: The Little Mouse Friend", text: "A musician named Krauncha was turned into a giant mouse for his pride. Ganesha caught him gently with his golden loop (Pasha) and made him his loyal mount, Mushakraj." },
+      { title: "Chapter 9: The Moon's Silly Laugh", text: "After Ganesha tripped and tied a snake around his belly like a belt, the proud Moon laughed mockingly. Ganesha taught him humility, causing the moon to wax and wane in cycles." },
+      { title: "Chapter 10: Writing the Mahabharata", text: "When his reed pen broke while writing 100,000 verses for Sage Vyasa, Ganesha broke off his own right tusk to continue writing without pause, becoming Ekadanta." },
+      { title: "Chapter 11: The Cosmic Fruit & Durva", text: "Ganesha won the fruit of wisdom by walking around his parents, declaring them his whole universe! Later, 21 blades of Durva grass cooled him after he swallowed the fire-demon Analasura." },
+      { title: "Chapter 12: 10 Days of Joy & Visarjan", text: "Lokmanya Tilak started public celebrations in 1893 to unite everyone. On the 10th day (Anant Chaturdashi), clay idols are immersed in water as we chant 'Ganpati Bappa Morya!'." }
+    ];
+
+    // 50 Kid-Friendly Questions Bank: 20 Easy, 15 Medium, 15 Hard
+    const ALL_QUESTIONS = [
+      // 20 EASY
+      { id: 1, diff: 'easy', cat: "Favorites", q: "What is Lord Ganesha's most favorite sweet treat in the world?", opts: ["Steamed sweet Modak 🥟", "Chocolate cookie 🍪", "Strawberry ice cream 🍦", "French fries 🍟"], a: 0, exp: "Modaks filled with coconut and jaggery are Lord Ganesha's favorite sweet!" },
+      { id: 2, diff: 'easy', cat: "Look", q: "What magnificent animal head does Lord Ganesha have?", opts: ["A roaring Lion head 🦁", "A gentle Elephant head 🐘", "A playful Monkey head 🐒", "An Eagle head 🦅"], a: 1, exp: "Lord Ganesha has a wise, gentle elephant head symbolizing memory and wisdom!" },
+      { id: 3, diff: 'easy', cat: "Friends", q: "What tiny animal friend is Lord Ganesha's special vehicle (vahana)?", opts: ["A tiny, clever Mouse 🐭", "A Kangaroo 🦘", "A Turtle 🐢", "A Cheetah 🐆"], a: 0, exp: "Lord Ganesha rides upon a tiny, loyal mouse named Mushakraj!" },
+      { id: 4, diff: 'easy', cat: "Family", q: "Who is Lord Ganesha's loving mother?", opts: ["Goddess Lakshmi", "Goddess Parvati", "Goddess Saraswati", "Goddess Ganga"], a: 1, exp: "Goddess Parvati lovingly created Ganesha and is his mother." },
+      { id: 5, diff: 'easy', cat: "Family", q: "Who is Lord Ganesha's powerful father?", opts: ["Lord Shiva", "Lord Brahma", "Lord Indra", "Lord Surya"], a: 0, exp: "Lord Shiva, who lives on Mount Kailash, is Ganesha's father." },
+      { id: 6, diff: 'easy', cat: "Family", q: "Who is Ganesha's brother who rides a colorful peacock?", opts: ["Lord Kartikeya (Murugan)", "Lord Hanuman", "Lord Balarama", "Lord Sugriva"], a: 0, exp: "Lord Kartikeya is Ganesha's brother who rides a peacock named Mayura." },
+      { id: 7, diff: 'easy', cat: "Festival", q: "How many days do we usually celebrate the grand Ganesh Chaturthi festival?", opts: ["Just 1 day", "3 days", "10 joyous days", "30 days"], a: 2, exp: "Ganesh Chaturthi is celebrated for 10 glorious days!" },
+      { id: 8, diff: 'easy', cat: "Festival", q: "What famous chant do kids and families shout during the festival?", opts: ["Ganpati Bappa Morya!", "Happy New Year!", "Abracadabra!", "Hocus Pocus!"], a: 0, exp: "'Ganpati Bappa Morya!' is the joyful cheer shouted across streets and homes!" },
+      { id: 9, diff: 'easy', cat: "Festival", q: "What is the name of the big festival celebrating Lord Ganesha's arrival?", opts: ["Diwali", "Holi", "Ganesh Chaturthi", "Raksha Bandhan"], a: 2, exp: "Ganesh Chaturthi is the sacred festival of Lord Ganesha!" },
+      { id: 10, diff: 'easy', cat: "Festival", q: "On the last day of the festival, what do we do with clay Ganesha idols?", opts: ["Keep them in a box", "Gently immerse them in water (Visarjan)", "Launch them into space", "Bury them under the bed"], a: 1, exp: "During Visarjan, clay idols are immersed in water so Bappa can return home." },
+      { id: 11, diff: 'easy', cat: "Look", q: "Why is Lord Ganesha called 'Ekadanta'?", opts: ["Only one ear", "Only one complete tusk (the other is broken)", "One eye", "One shoe"], a: 1, exp: "'Ekadanta' means 'One-Tusked', because one tusk was broken to write a great story!" },
+      { id: 12, diff: 'easy', cat: "Favorites", q: "What bright red flower does Lord Ganesha love to receive in prayers?", opts: ["Red Hibiscus (Jaswand)", "White Daisy", "Blue Orchid", "Yellow Dandelion"], a: 0, exp: "Red hibiscus flowers are Lord Ganesha's favorite floral offering!" },
+      { id: 13, diff: 'easy', cat: "Look", q: "Why does Lord Ganesha have large elephant ears?", opts: ["To fly like an airplane", "To listen patiently to everyone's prayers", "To keep sun out of his eyes", "To hide sweets"], a: 1, exp: "His large ears teach us to listen carefully and hear every prayer." },
+      { id: 14, diff: 'easy', cat: "Blessings", q: "Before starting a new school exam or prayer, who do we pray to first?", opts: ["Lord Ganesha", "The Sandman", "The Tooth Fairy", "Peter Pan"], a: 0, exp: "Lord Ganesha is always prayed to first for good luck and clear obstacles!" },
+      { id: 15, diff: 'easy', cat: "Eco", q: "What eco-friendly material is best for making Ganesha idols?", opts: ["Natural clay and mud (Mitti)", "Hard plastic", "Toxic chemicals", "Styrofoam"], a: 0, exp: "Natural clay idols dissolve harmlessly in water and protect nature!" },
+      { id: 16, diff: 'easy', cat: "Home", q: "Where is Lord Ganesha's peaceful snowy mountain home located?", opts: ["Mount Kailash in Himalayas", "Grand Canyon", "Under Pacific Ocean", "Eiffel Tower"], a: 0, exp: "Lord Ganesha lives happily with Shiva and Parvati on Mount Kailash." },
+      { id: 17, diff: 'easy', cat: "Blessings", q: "What does the sweet name 'Vighnaharta' mean for children?", opts: ["Maker of Ice Cream", "Remover of all Obstacles and Troubles", "Fast Runner", "Master of Drums"], a: 1, exp: "'Vighnaharta' means the kind protector who clears hurdles from our path!" },
+      { id: 18, diff: 'easy', cat: "Look", q: "What does Lord Ganesha's big, cute belly represent?", opts: ["Ate too much pizza", "Peacefully holds and understands all universe's wisdom", "Forgot to exercise", "Swallowed a basketball"], a: 1, exp: "His round belly symbolizes that he can peacefully contain the whole universe." },
+      { id: 19, diff: 'easy', cat: "Symbols", q: "Which sacred symbol of peace is closely linked to Ganesha?", opts: ["The sacred symbol ॐ (Om)", "Question mark (?)", "Smiley face 😊", "Dollar sign ($)"], a: 0, exp: "Lord Ganesha's divine form represents the primordial cosmic sound ॐ (Om)!" },
+      { id: 20, diff: 'easy', cat: "Trunk", q: "What can Lord Ganesha hold gently with his super-strong trunk?", opts: ["A tiny sweet modak or a massive tree trunk!", "Only feather pillows", "Nothing at all", "Only water balloons"], a: 0, exp: "An elephant trunk can lift heavy logs, yet gently pick up a tiny modak!" },
+
+      // 15 MEDIUM
+      { id: 21, diff: 'medium', cat: "Birth", q: "How did Mother Parvati first make the boy before giving him life?", opts: ["Ordered a toy", "Shaped him from golden turmeric and sandalwood paste", "Carved him from ice", "Baked him like bread"], a: 1, exp: "Mother Parvati sculpted the boy out of turmeric paste and breathed life into him!" },
+      { id: 22, diff: 'medium', cat: "Door", q: "Why did the young boy stop Lord Shiva from entering the house?", opts: ["Playing hide-and-seek", "Faithfully obeying his mother's order to let no one in while she bathed", "Disliked Shiva's clothes", "Lost the house key"], a: 1, exp: "The loyal boy had never seen Shiva before and promised his mother to let nobody pass." },
+      { id: 23, diff: 'medium', cat: "Door", q: "What simple item did Mother Parvati give the boy to help him stand guard?", opts: ["A wooden staff (danda)", "A water gun", "A magic wand", "A whistle"], a: 0, exp: "Mother Parvati gave him a sturdy wooden staff (danda) to guard the doorway." },
+      { id: 24, diff: 'medium', cat: "Race", q: "How did Ganesha win the race around the world against his brother Kartikeya?", opts: ["Rocket boosters on mouse", "Walked around his parents 3 times, saying parents are his entire universe!", "Took a secret cave shortcut", "Kartikeya fell asleep"], a: 1, exp: "Ganesha walked around his parents, proving parents are the whole universe!" },
+      { id: 25, diff: 'medium', cat: "Tusk", q: "Why did Ganesha snap off his own tusk while writing the Mahabharata?", opts: ["Pen broke, and he refused to stop writing the sacred story", "Bumped into a bookshelf", "To eat apples", "Teething"], a: 0, exp: "When his pen broke, Ganesha broke his tusk to keep writing without pause!" },
+      { id: 26, diff: 'medium', cat: "Epic", q: "Which wise sage recited the 100,000 verses of the Mahabharata for Ganesha to write?", opts: ["Sage Ved Vyasa", "Sage Valmiki", "Sage Vishwamitra", "Sage Agastya"], a: 0, exp: "Great Sage Ved Vyasa recited the epic, and Lord Ganesha wrote down every verse!" },
+      { id: 27, diff: 'medium', cat: "Moon", q: "Why did Chandra (the Moon) burst out laughing at Lord Ganesha on Chaturthi night?", opts: ["Ganesha told a joke", "Ganesha tripped after seeing a snake, and his modaks spilled", "Silly shoes", "Mouse sang funny song"], a: 1, exp: "Mushakraj got startled by a snake, Ganesha stumbled, and the proud Moon laughed rudely." },
+      { id: 28, diff: 'medium', cat: "Moon", q: "What did Ganesha do with the harmless snake after picking up his modaks?", opts: ["Tied the snake around his tummy like a belt", "Threw it to the clouds", "Put it in his backpack", "Gave it a party hat"], a: 0, exp: "Ganesha cheerfully wrapped the snake around his belly as an Udarabandha (belt)!" },
+      { id: 29, diff: 'medium', cat: "Moon", q: "What is said to happen if you look at the moon on Ganesh Chaturthi night?", opts: ["Turn into a frog", "Might face false blame or silly misunderstandings (Mithya Dosha)", "Hair turns bright green", "Alarm clock breaks"], a: 1, exp: "Due to Ganesha's lesson to the proud moon, viewing the Chaturthi moon can bring false blame." },
+      { id: 30, diff: 'medium', cat: "Moon", q: "How did kind Ganesha soften the curse on the Moon after the Moon said sorry?", opts: ["The Moon waxes and wanes over 15 days, reaching full glow on Purnima", "Shine only at lunchtime", "Allowed out only on weekends", "Wear sunglasses forever"], a: 0, exp: "Ganesha decreed the Moon would wax and wane in cycles, reaching full beauty on Purnima." },
+      { id: 31, diff: 'medium', cat: "Battle", q: "Which weapon did Lord Shiva throw during the standoff at the door?", opts: ["His three-pronged spear, the Trishula", "A boomerang", "A magical net", "A golden arrow"], a: 0, exp: "In the dramatic clash, Lord Shiva threw his divine trident, the Trishula." },
+      { id: 32, diff: 'medium', cat: "Boon", q: "What does the special boon 'Prathama Pujya' mean for Ganesha?", opts: ["Eat dessert before dinner", "Honored and worshiped FIRST before any other god in every ritual", "Tallest of all gods", "First prize in marathon"], a: 1, exp: "'Prathama Pujya' means 'First to be Worshiped' before any new beginning." },
+      { id: 33, diff: 'medium', cat: "Offering", q: "How many modaks are traditionally placed on a plate for Ganesha's special offering?", opts: ["5 modaks", "10 modaks", "21 modaks", "100 modaks"], a: 2, exp: "Offering 21 delicious modaks is the auspicious number beloved by Ganesha!" },
+      { id: 34, diff: 'medium', cat: "Friends", q: "What royal title is given to Ganesha's mouse to show he is King of Mice?", opts: ["Mushakraj", "Mickey", "Speedy", "Jerry"], a: 0, exp: "He is honorably called 'Mushakraj' (The King of Mice)!" },
+      { id: 35, diff: 'medium', cat: "Search", q: "In which direction did Shiva's messengers travel to find an animal head?", opts: ["Toward the North (Uttara)", "Toward the South", "Toward the West", "Toward the East"], a: 0, exp: "Shiva commanded them to search toward the North, the direction of wisdom." },
+
+      // 15 HARD
+      { id: 36, diff: 'hard', cat: "Mouse Origin", q: "Who was Mushakraj in heaven before being turned into a mouse?", opts: ["A heavenly musician (Gandharva) named Krauncha", "A cloud fairy", "A king from Egypt", "A shooting star"], a: 0, exp: "Before his transformation, the mouse was a celestial musician named Krauncha in Indra's court." },
+      { id: 37, diff: 'hard', cat: "Mouse Origin", q: "Why was Krauncha turned into a giant mouse by Sage Vamadeva?", opts: ["Stepped on the sage's foot and forgot to show humility", "Sang out of tune", "Ate sage's lunch", "Overslept on Monday"], a: 0, exp: "Krauncha carelessly stepped on Sage Vamadeva's foot without apologizing." },
+      { id: 38, diff: 'hard', cat: "Ashram", q: "Which wise sage's ashram was being dug up by the giant mouse before Ganesha helped?", opts: ["Sage Parashara", "Sage Dronacharya", "Sage Kripacharya", "Sage Sandipani"], a: 0, exp: "Sage Parashara's quiet forest hermitage was troubled by the mouse." },
+      { id: 39, diff: 'hard', cat: "Noose", q: "What glowing tool did Ganesha throw to capture the mouse without harming it?", opts: ["His golden divine loop / noose (Pasha)", "A giant fishing net", "A diamond cage", "A bowl of melted cheese"], a: 0, exp: "Lord Ganesha cast his divine noose (Pasha), which coiled through tunnels and caught the mouse safely." },
+      { id: 40, diff: 'hard', cat: "Durva Grass", q: "What cooling green grass with 21 blades is offered to Lord Ganesha?", opts: ["Durva grass (Bermuda grass)", "Lemon grass", "Bamboo grass", "Seaweed"], a: 0, exp: "Cooling Durva grass is offered in clusters of 21 blades to soothe Lord Ganesha." },
+      { id: 41, diff: 'hard', cat: "Fire Demon", q: "Why did Ganesha need cooling Durva grass to soothe his tummy?", opts: ["Swallowed a fiery demon named Analasura to protect the world!", "Ate 5 bowls of hot chili peppers", "Drank boiling tea too fast", "Swallowed a lit candle"], a: 0, exp: "Ganesha swallowed the fire-demon Analasura to save everyone; Durva blades cooled the heat!" },
+      { id: 42, diff: 'hard', cat: "Wisdom Mango", q: "What was the name of the divine mango of supreme knowledge in the brother's contest?", opts: ["Gyana Pazham (The Fruit of Supreme Wisdom)", "Alphonso Mango", "Golden Apple", "Magic Peach"], a: 0, exp: "Sage Narada brought the 'Gyana Pazham' (The Fruit of Knowledge) to test their wisdom." },
+      { id: 43, diff: 'hard', cat: "Holy North", q: "Why did Lord Shiva specifically choose the North (Uttarayana) for finding the head?", opts: ["North represents the sacred realm of wisdom, devas, and peace", "South was too windy", "Messengers liked cold weather", "It was downhill"], a: 0, exp: "In Vedic lore, North (Uttarayana) is the sacred direction of spiritual enlightenment." },
+      { id: 44, diff: 'hard', cat: "History", q: "Which Indian freedom fighter started the big public Ganesh festivals in 1893 to unite people?", opts: ["Lokmanya Bal Gangadhar Tilak", "Mahatma Gandhi", "Subhas Chandra Bose", "Bhagat Singh"], a: 0, exp: "Lokmanya Tilak turned the home prayer into a huge public festival to unite everyone!" },
+      { id: 45, diff: 'hard', cat: "Day 10", q: "What is the special name of the 10th day when Ganesha idols are immersed in water?", opts: ["Anant Chaturdashi", "Vijayadashami", "Maha Shivaratri", "Guru Purnima"], a: 0, exp: "The grand farewell and immersion ceremony takes place on Anant Chaturdashi!" },
+      { id: 46, diff: 'hard', cat: "Krishna Story", q: "Which great avatar was once falsely blamed for a missing jewel because he saw the Chaturthi moon?", opts: ["Lord Krishna (The Syamantaka jewel)", "Lord Rama", "Lord Buddha", "Lord Vamana"], a: 0, exp: "Even Lord Krishna faced false accusations regarding the Syamantaka gem after glimpsing the moon's reflection!" },
+      { id: 47, diff: 'hard', cat: "Vyasa Rule", q: "What clever condition did Sage Vyasa set so he could catch his breath while reciting?", opts: ["Ganesha had to fully understand each poem before writing it down", "Sing every tenth sentence", "Write with eyes closed", "Take a 10-minute nap"], a: 0, exp: "Vyasa gave Ganesha tricky verses so Ganesha paused to think, giving Vyasa time to compose new poems!" },
+      { id: 48, diff: 'hard', cat: "Names", q: "What does the sacred name 'Ganapati' literally mean?", opts: ["Leader and Protector of the Ganas (people and divine hosts)", "Master of Jungle", "King of Mountains", "Singer of Hymns"], a: 0, exp: "'Gana' means hosts or groups of beings, and 'Pati' means Lord or Leader!" },
+      { id: 49, diff: 'hard', cat: "Promises", q: "What two conditions did Mother Parvati ask for before stopping her cosmic anger?", opts: ["Her son must be revived immediately, and he must be worshiped first of all gods!", "Palace of gold and carriage", "Army of elephants", "Sun shines at night"], a: 0, exp: "Parvati demanded her son be brought back to life and honored as Prathama Pujya (first worshiped)!" },
+      { id: 50, diff: 'hard', cat: "Lessons", q: "What does Ganesha's versatile trunk teach students who are learning in school?", opts: ["Be adaptable and curious: handle big ideas and tiny details with care!", "Only focus on loud noises", "Never ask questions in class", "Always take easiest path"], a: 0, exp: "An elephant trunk can snap branches or gently pick up a needle, teaching balance and curiosity!" }
+    ];
+
+    // Balanced Generator: 3 Easy, 1 Medium, 2 Hard
+    function getBalancedQuiz() {
+      const easy = [...ALL_QUESTIONS.filter(q => q.diff === 'easy')].sort(() => Math.random() - 0.5);
+      const med = [...ALL_QUESTIONS.filter(q => q.diff === 'medium')].sort(() => Math.random() - 0.5);
+      const hard = [...ALL_QUESTIONS.filter(q => q.diff === 'hard')].sort(() => Math.random() - 0.5);
+      return [...easy.slice(0, 3), ...med.slice(0, 1), ...hard.slice(0, 2)];
+    }
+
+    // Audio Synthesizer
+    class SoundFX {
+      constructor() { this.ctx = null; this.enabled = true; }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      }
+      heartbeat(urgency = 1) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          const osc = this.ctx.createOscillator(), gain = this.ctx.createGain(), t = this.ctx.currentTime;
+          osc.type = 'sine'; osc.frequency.setValueAtTime(60 * urgency, t);
+          osc.frequency.exponentialRampToValueAtTime(30, t + 0.15);
+          gain.gain.setValueAtTime(0.25 * urgency, t); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(t); osc.stop(t + 0.2);
+        } catch(e) {}
+      }
+      tick() {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          const osc = this.ctx.createOscillator(), gain = this.ctx.createGain(), t = this.ctx.currentTime;
+          osc.type = 'triangle'; osc.frequency.setValueAtTime(850, t);
+          gain.gain.setValueAtTime(0.08, t); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(t); osc.stop(t + 0.05);
+        } catch(e) {}
+      }
+      correct() {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+            const osc = this.ctx.createOscillator(), gain = this.ctx.createGain(), t = this.ctx.currentTime + i * 0.07;
+            osc.type = 'sine'; osc.frequency.setValueAtTime(f, t);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(t); osc.stop(t + 0.65);
+          });
+        } catch(e) {}
+      }
+      wrong() {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          [293.66, 277.18].forEach((f, i) => {
+            const osc = this.ctx.createOscillator(), gain = this.ctx.createGain(), t = this.ctx.currentTime + i * 0.12;
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(f, t);
+            gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(t); osc.stop(t + 0.4);
+          });
+        } catch(e) {}
+      }
+    }
+
+    const sfx = new SoundFX();
+    let audioOn = true;
+    function toggleAudio() {
+      audioOn = !audioOn; sfx.enabled = audioOn;
+      document.getElementById('toggle-sound-btn').innerText = audioOn ? '🔊 Sound ON' : '🔇 Sound OFF';
+    }
+
+    // State
+    let quizMode = 'balanced'; // 'balanced' (3 Easy, 1 Med, 2 Hard) or 'all'
+    let quizQuestions = [];
+    let currentQIdx = 0;
+    let selectedOptIdx = null;
+    let isRevealed = false;
+    let score = 0, combo = 0, modaks = 0;
+    let userLogs = [];
+
+    const QUESTION_TIME = 45;
+    let timeRemaining = QUESTION_TIME;
+    let timerId = null;
+
+    function setQuizMode(mode) {
+      quizMode = mode;
+      document.getElementById('mode-btn-balanced').classList.toggle('active', mode === 'balanced');
+      document.getElementById('mode-btn-all').classList.toggle('active', mode === 'all');
+    }
+
+    function startQuiz() {
+      if (quizMode === 'balanced') {
+        quizQuestions = getBalancedQuiz();
+      } else {
+        quizQuestions = [...ALL_QUESTIONS].sort(() => Math.random() - 0.5);
+      }
+      currentQIdx = 0; score = 0; combo = 0; modaks = 0; userLogs = [];
+
+      document.getElementById('intro-view').style.display = 'none';
+      document.getElementById('summary-view').style.display = 'none';
+      document.getElementById('story-view').style.display = 'none';
+      document.getElementById('playing-view').style.display = 'block';
+
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      const q = quizQuestions[currentQIdx];
+      selectedOptIdx = null; isRevealed = false; timeRemaining = QUESTION_TIME;
+
+      document.getElementById('hud-q-num').innerText = `${currentQIdx + 1} / ${quizQuestions.length}`;
+      document.getElementById('hud-score').innerText = score;
+      document.getElementById('hud-combo').innerText = `×${combo}`;
+      document.getElementById('hud-modaks').innerText = `🥟 ${modaks}`;
+
+      const diffLabel = q.diff === 'easy' ? '⭐ Easy' : q.diff === 'medium' ? '⭐⭐ Medium' : '⭐⭐⭐ Hard';
+      const hudDiff = document.getElementById('hud-diff');
+      hudDiff.innerText = diffLabel;
+      hudDiff.className = `diff-badge-pill ${q.diff}`;
+
+      const cardDiff = document.getElementById('q-diff-badge');
+      cardDiff.innerText = diffLabel;
+      cardDiff.className = `diff-badge-pill ${q.diff}`;
+
+      document.getElementById('q-category').innerText = q.cat;
+      document.getElementById('q-text').innerText = q.q;
+
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+      q.opts.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerHTML = `
+          <div class="opt-letter">${['A', 'B', 'C', 'D'][idx]}</div>
+          <div style="flex: 1;">${opt}</div>
+        `;
+        btn.onclick = () => selectOption(idx);
+        container.appendChild(btn);
+      });
+
+      document.getElementById('exp-card').style.display = 'none';
+      document.getElementById('btn-reveal').style.display = 'inline-block';
+      document.getElementById('btn-reveal').disabled = true;
+      document.getElementById('btn-next').style.display = 'none';
+      document.getElementById('status-hint').innerText = 'Select your answer to lock it in.';
+
+      startAdrenalineTimer();
+    }
+
+    function startAdrenalineTimer() {
+      if (timerId) clearInterval(timerId);
+      updateTimerDisplay();
+
+      timerId = setInterval(() => {
+        if (timeRemaining > 0) {
+          timeRemaining--;
+          updateTimerDisplay();
+
+          if (timeRemaining <= 15 && timeRemaining > 0) {
+            sfx.heartbeat(1.4);
+          } else if (timeRemaining % 5 === 0 && timeRemaining > 0) {
+            sfx.tick();
+          }
+        } else {
+          revealAnswer();
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerId) { clearInterval(timerId); timerId = null; }
+    }
+
+    function updateTimerDisplay() {
+      const panel = document.getElementById('timer-panel');
+      const timeNum = document.getElementById('time-display');
+      const fill = document.getElementById('timer-fill');
+      const surgeBadge = document.getElementById('surge-indicator');
+      const timerIcon = document.getElementById('timer-icon');
+
+      timeNum.innerText = `${timeRemaining}s`;
+      const pct = (timeRemaining / QUESTION_TIME) * 100;
+      fill.style.width = `${pct}%`;
+
+      if (timeRemaining <= 15 && timeRemaining > 0) {
+        panel.classList.add('surge');
+        fill.classList.add('surge-fill');
+        surgeBadge.style.display = 'block';
+        timerIcon.innerText = '🔥';
+      } else {
+        panel.classList.remove('surge');
+        fill.classList.remove('surge-fill');
+        surgeBadge.style.display = 'none';
+        timerIcon.innerText = '⏳';
+      }
+    }
+
+    function selectOption(idx) {
+      if (isRevealed) return;
+      selectedOptIdx = idx;
+      sfx.tick();
+
+      const buttons = document.querySelectorAll('.option-btn');
+      buttons.forEach((b, i) => { b.classList.toggle('selected', i === idx); });
+
+      document.getElementById('btn-reveal').disabled = false;
+      document.getElementById('status-hint').innerText = '🔒 Option selected! Tap to reveal or let the 45s tension play out:';
+    }
+
+    function revealAnswer() {
+      if (isRevealed) return;
+      isRevealed = true;
+      stopTimer();
+
+      const q = quizQuestions[currentQIdx];
+      const isCorrect = selectedOptIdx === q.a;
+      const buttons = document.querySelectorAll('.option-btn');
+
+      buttons.forEach((b, i) => {
+        b.classList.add('locked');
+        if (i === q.a) b.classList.add('correct');
+        if (selectedOptIdx === i && i !== q.a) b.classList.add('wrong');
+      });
+
+      if (isCorrect) {
+        sfx.correct();
+        combo++;
+        const bonus = q.diff === 'hard' ? 200 : q.diff === 'medium' ? 150 : 100;
+        const pts = bonus + combo * 20 + timeRemaining * 2;
+        score += pts;
+        modaks += 1 + (combo >= 3 ? 1 : 0);
+      } else {
+        sfx.wrong();
+        combo = 0;
+      }
+
+      document.getElementById('hud-score').innerText = score;
+      document.getElementById('hud-combo').innerText = `×${combo}`;
+      document.getElementById('hud-modaks').innerText = `🥟 ${modaks}`;
+
+      const expCard = document.getElementById('exp-card');
+      const expBadge = document.getElementById('exp-badge');
+      const expText = document.getElementById('exp-text');
+
+      expCard.style.display = 'block';
+      if (isCorrect) {
+        expCard.className = 'explanation-card correct-exp';
+        expBadge.innerText = '✨ BAPPA BLESSES YOU! CORRECT ANSWER!';
+      } else {
+        expCard.className = 'explanation-card';
+        expBadge.innerText = '🕉️ SACRED STORY REVELATION';
+      }
+      expText.innerText = q.exp;
+
+      userLogs.push({
+        qText: q.q,
+        diff: q.diff,
+        cat: q.cat,
+        userPick: selectedOptIdx !== null ? q.opts[selectedOptIdx] : 'Time Expired (None)',
+        correctPick: q.opts[q.a],
+        isCorrect,
+        exp: q.exp
+      });
+
+      document.getElementById('btn-reveal').style.display = 'none';
+      document.getElementById('btn-next').style.display = 'inline-block';
+      document.getElementById('btn-next').innerText = currentQIdx < quizQuestions.length - 1 ? 'Next Question (45s) →' : 'View Final Blessings ★';
+      document.getElementById('status-hint').innerText = 'Sacred lore revealed above.';
+    }
+
+    function nextQuestion() {
+      if (currentQIdx < quizQuestions.length - 1) {
+        currentQIdx++;
+        loadQuestion();
+      } else {
+        finishQuiz();
+      }
+    }
+
+    function finishQuiz() {
+      document.getElementById('playing-view').style.display = 'none';
+      document.getElementById('summary-view').style.display = 'block';
+
+      const correctCount = userLogs.filter(l => l.isCorrect).length;
+      document.getElementById('final-score').innerText = score;
+      document.getElementById('final-stats').innerHTML = `
+        <strong>${correctCount} / ${userLogs.length} Correct</strong> (${Math.round((correctCount / userLogs.length) * 100)}% Accuracy) · 
+        <strong>${modaks} Modaks Won</strong>
+      `;
+
+      const list = document.getElementById('review-list');
+      list.innerHTML = '<h3 style="font-family: \'Cinzel\', serif; color: var(--gold-light); text-align: center; margin-bottom: 16px;">Story Review</h3>';
+      userLogs.forEach((log, idx) => {
+        const item = document.createElement('div');
+        item.className = `review-item ${log.isCorrect ? 'pass' : 'fail'}`;
+        item.innerHTML = `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <strong style="color: var(--gold-light);">Q${idx + 1} · <span class="diff-badge-pill ${log.diff}">${log.diff.toUpperCase()}</span> · ${log.cat}</strong>
+            <span style="font-weight: 700; color: ${log.isCorrect ? '#81c784' : '#e57373'};">${log.isCorrect ? '✓ CORRECT' : '✕ MISSED'}</span>
+          </div>
+          <p style="font-weight: 600; margin-bottom: 8px;">${log.qText}</p>
+          <p style="font-size: 0.9rem; margin-bottom: 4px;"><span style="color: #ffcc80;">Your Choice:</span> ${log.userPick}</p>
+          <p style="font-size: 0.9rem; margin-bottom: 6px;"><span style="color: #a5d6a7;">Correct Answer:</span> ${log.correctPick}</p>
+          <p style="font-size: 0.85rem; color: #d7ccc8;"><em>Lore: ${log.exp}</em></p>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    let storyTab = 0;
+    function renderStoryUI() {
+      const pills = document.getElementById('story-pills');
+      pills.innerHTML = '';
+      STORY_CHAPTERS.forEach((ch, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `story-pill-btn ${idx === storyTab ? 'active' : ''}`;
+        btn.innerText = `Ch. ${idx + 1}`;
+        btn.onclick = () => { storyTab = idx; renderStoryUI(); };
+        pills.appendChild(btn);
+      });
+
+      const display = document.getElementById('chapter-content');
+      display.innerHTML = `
+        <h3>${STORY_CHAPTERS[storyTab].title}</h3>
+        <p>${STORY_CHAPTERS[storyTab].text}</p>
+      `;
+    }
+
+    function toggleStory() {
+      const storyView = document.getElementById('story-view');
+      const isVisible = storyView.style.display === 'block';
+
+      if (isVisible) {
+        storyView.style.display = 'none';
+        if (quizQuestions.length > 0) {
+          document.getElementById('playing-view').style.display = 'block';
+        } else {
+          document.getElementById('intro-view').style.display = 'block';
+        }
+      } else {
+        document.getElementById('intro-view').style.display = 'none';
+        document.getElementById('playing-view').style.display = 'none';
+        document.getElementById('summary-view').style.display = 'none';
+        storyView.style.display = 'block';
+        renderStoryUI();
+      }
+    }
+  </script>
+</body>
+</html>

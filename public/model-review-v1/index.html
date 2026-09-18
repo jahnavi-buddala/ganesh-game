@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>Vighnaharta · 3D Model Review</title>
+ <link rel="stylesheet" href="./review.css">
+ <script type="importmap">{"imports":{"three":"./vendor/build/three.module.js","three/addons/":"./vendor/examples/jsm/"}}</script>
+</head>
+<body>
+ <header><a class="brand" href="#mushika"><span class="seal">ॐ</span><span>VIGHNAHARTA<small>CHARACTERS & WORLD</small></span></a><span class="review-badge"><i></i> MODEL REVIEW · ROUND 01</span><span class="header-note">Approval before integration</span></header>
+ <main>
+  <aside class="asset-list"><div class="section-heading"><span>THE COLLECTION</span><span>07</span></div>
+   <button class="asset selected" data-asset="mushika"><span class="asset-icon">01</span><span>Mushika<small>Our little hero</small></span><span class="asset-arrow">↗</span></button>
+   <button class="asset" data-asset="modak"><span class="asset-icon">02</span><span>Golden modak<small>The offering</small></span><span class="asset-arrow">↗</span></button>
+   <button class="asset" data-asset="ganesha"><span class="asset-icon">03</span><span>Lord Ganesha<small>Waiting in the distance</small></span><span class="asset-arrow">↗</span></button>
+   <div class="section-heading second"><span>THE FESTIVAL ROUTE</span></div>
+   <button class="asset" data-asset="festival-tram"><span class="asset-icon">04</span><span>Festival tram<small>Jump onto the roof</small></span><span class="asset-arrow">↗</span></button>
+   <button class="asset" data-asset="slide-barrier"><span class="asset-icon">05</span><span>Slide barrier<small>Duck & glide underneath</small></span><span class="asset-arrow">↗</span></button>
+   <button class="asset" data-asset="temple-rooftop"><span class="asset-icon">06</span><span>Temple rooftop<small>Run above the festival</small></span><span class="asset-arrow">↗</span></button>
+   <button class="asset" data-asset="roof-ramp"><span class="asset-icon">07</span><span>Roof ramp<small>Climb to the upper route</small></span><span class="asset-arrow">↗</span></button>
+   <div class="sidebar-note"><span>✦</span><p>A little courage.<br>A world of blessings.</p></div>
+  </aside>
+  <section class="stage-section">
+   <div class="stage-heading"><div><div class="eyebrow" id="eyebrow">CHARACTER STUDY / 01</div><h1 id="model-title">Mushika</h1><p id="model-subtitle">Small paws. An extraordinary journey.</p></div><button class="round-button" id="turntable" aria-pressed="false" title="Rotate automatically" aria-label="Rotate automatically">⟳</button></div>
+   <div class="viewport" id="viewport"><canvas id="model-canvas" aria-label="Interactive 3D model. Drag to rotate. Scroll to zoom."></canvas><div id="loading" role="status">Preparing your model…</div><div class="view-label"><span class="view-dot"></span>LIVE 3D PREVIEW</div><div class="view-controls"><button data-view="front" class="active">Front</button><button data-view="side">Side</button><button data-view="back">Back</button><button data-view="three">¾ View</button></div><div class="stage-instruction">Drag to rotate <span>·</span> Scroll to zoom <span>·</span> Pinch on mobile</div></div>
+   <div class="animation-bar" id="animation-bar"><span class="animation-label">MOVEMENT STUDIES</span><div id="animation-buttons"></div><button id="pause-animation" title="Pause animation" aria-label="Pause animation">Ⅱ</button></div>
+  </section>
+  <aside class="detail-panel"><div class="eyebrow">DESIGN NOTES</div><h2 id="design-heading">Made to feel like Mushika.</h2><p id="description"></p><div class="detail-divider"></div><div id="features"></div><div class="detail-divider"></div><div class="status-card"><span>AWAITING YOUR APPROVAL</span><p>These are model drafts. They have not been added to the game.</p></div><a id="download-model" class="download-button" href="./models/mushika.glb" download>Download 3D model <span>↓</span></a><button class="reference-button" id="reference-button">View the original reference <span>↗</span></button><div class="model-details" id="model-details"></div></aside>
+ </main>
+ <footer><span>Ganpati Bappa Morya!</span><p>Review the face, silhouette, cape, and movement. Tell me what to keep or change.</p><a href="./REVIEW-NOTES.md" target="_blank">Review notes ↗</a></footer>
+ <dialog id="reference-dialog"><button id="close-reference" aria-label="Close reference">×</button><h2>Your original visual reference</h2><img src="./original-reference.png" alt="Original Vighnaharta Run visual reference provided by the user"><p>This image guides the model design. The viewer shows the actual draft geometry.</p></dialog>
+ <script type="module" src="./review.js"></script>
+</body>
+</html>

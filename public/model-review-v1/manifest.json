@@ -1,0 +1,135 @@
+[
+  {
+    "id": "mushika",
+    "name": "Mushika",
+    "filename": "models/mushika.glb",
+    "triangles": 201710,
+    "meshes": 147,
+    "bytes": 8028784,
+    "size": [
+      2.0858679476416437,
+      2.3389227490077302,
+      1.9242753095626832
+    ],
+    "clips": [
+      "Idle",
+      "Run",
+      "Jump",
+      "Slide",
+      "Land"
+    ],
+    "asset": "Mushika",
+    "reviewStatus": "Awaiting visual approval",
+    "forward": "+Z",
+    "note": "Articulated part animation. Fine fur geometry is a review-detail asset; gameplay LOD and skin rig refinement follow approval."
+  },
+  {
+    "id": "modak",
+    "name": "Golden modak",
+    "filename": "models/modak.glb",
+    "triangles": 14336,
+    "meshes": 1,
+    "bytes": 352464,
+    "size": [
+      0.9146794080734253,
+      0.8859999757260084,
+      0.8911994695663452
+    ],
+    "clips": [],
+    "asset": "Golden modak",
+    "role": "Collectible",
+    "reviewStatus": "Awaiting approval"
+  },
+  {
+    "id": "ganesha",
+    "name": "Seated Ganesha",
+    "filename": "models/ganesha.glb",
+    "triangles": 338844,
+    "meshes": 18,
+    "bytes": 24929216,
+    "size": [
+      3.619999885559082,
+      4.050000188052654,
+      3
+    ],
+    "clips": [],
+    "asset": "Seated Ganesha",
+    "role": "Distant devotional landmark",
+    "reviewStatus": "Awaiting approval",
+    "placement": "Faces Mushika. Remains distant during endless running."
+  },
+  {
+    "id": "festival-tram",
+    "name": "Festival tram",
+    "filename": "models/festival-tram.glb",
+    "triangles": 89392,
+    "meshes": 9,
+    "bytes": 6443864,
+    "size": [
+      2.505000114440918,
+      2.6249999701976776,
+      4.699999809265137
+    ],
+    "clips": [],
+    "asset": "Festival tram",
+    "role": "Jump onto roof and run along it",
+    "roofHeight": 2.67,
+    "roofWidth": 2.14,
+    "roofLength": 4.45,
+    "reviewStatus": "Awaiting approval"
+  },
+  {
+    "id": "slide-barrier",
+    "name": "Slide barrier",
+    "filename": "models/slide-barrier.glb",
+    "triangles": 13908,
+    "meshes": 6,
+    "bytes": 1006540,
+    "size": [
+      3.0399999618530273,
+      2.44000005453825,
+      0.8999999761581421
+    ],
+    "clips": [],
+    "asset": "Slide barrier",
+    "role": "Slide underneath",
+    "clearance": 1.45,
+    "reviewStatus": "Awaiting approval"
+  },
+  {
+    "id": "temple-rooftop",
+    "name": "Temple rooftop",
+    "filename": "models/temple-rooftop.glb",
+    "triangles": 38112,
+    "meshes": 4,
+    "bytes": 2747608,
+    "size": [
+      5.150000095367432,
+      3.7650001335144037,
+      5.5
+    ],
+    "clips": [],
+    "asset": "Temple rooftop",
+    "role": "Rooftop running and gaps",
+    "roofHeight": 3.2,
+    "reviewStatus": "Awaiting approval"
+  },
+  {
+    "id": "roof-ramp",
+    "name": "Vehicle access ramp",
+    "filename": "models/roof-ramp.glb",
+    "triangles": 4508,
+    "meshes": 3,
+    "bytes": 327436,
+    "size": [
+      2.0799999237060547,
+      2.7299999040551484,
+      3.5199999809265137
+    ],
+    "clips": [],
+    "asset": "Vehicle access ramp",
+    "role": "Run up onto a vehicle",
+    "height": 2.67,
+    "reviewStatus": "Awaiting approval"
+  }
+]
