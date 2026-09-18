@@ -27,7 +27,9 @@ export function advance(s: RunState, dt: number, startingTheme: number) {
   s.slide = Math.max(0, s.slide-dt); s.invincible = Math.max(0, s.invincible-dt);
   s.blessing = Math.max(0, s.blessing-dt); if (!s.blessing) s.maha = false;
   s.theme = (startingTheme + Math.floor(s.distance/500)) % THEMES.length;
-  if (s.elapsed >= s.nextGate) { s.status = 'gate'; s.gateTime = 45; s.nextGate += 120; }
+  // Two-minute milestones now release an Om gift into the live track instead
+  // of interrupting the run with a question screen.
+  if (s.elapsed >= s.nextGate) s.nextGate += 120;
   return travel;
 }
 export function move(s:RunState, action:'left'|'right'|'jump'|'slide') {
@@ -40,8 +42,6 @@ export function move(s:RunState, action:'left'|'right'|'jump'|'slide') {
 export function collect(s:RunState) { s.modaks++; s.score += s.maha && s.blessing>0 ? 100 : 50; }
 export function reward(s:RunState) {
   s.combo++; s.bestCombo=Math.max(s.bestCombo,s.combo); s.score+=150;
-  if (s.combo % 5 === 0) { s.blessing=10; s.maha=true; return 'maha'; }
-  if (s.combo === 3) { s.blessing=10; return 'blessing'; }
   return 'combo';
 }
 export function hit(s:RunState) {

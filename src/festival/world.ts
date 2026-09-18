@@ -10,7 +10,7 @@ import { resolveMotion } from './rules';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { advance, clears, collect, freshState, hit, move, obstaclePattern, reward, type Obstacle, type RunState } from './rules';
 
-type Entity = { mesh:T.Group; lane:number; kind:Obstacle|'modak'|'ramp'|'rooftop'; checked:boolean; elevation:number };
+type Entity = { mesh:T.Group; lane:number; kind:Obstacle|'modak'|'om'|'ramp'|'rooftop'; checked:boolean; elevation:number };
 const palette = {gold:0xe9aa35, red:0x9e2034, stone:0xba7956, ivory:0xffdfac, pink:0xd8918e};
 const geo = {
   box:new RoundedBoxGeometry(1,1,1,2,.035), sphere:new T.SphereGeometry(1,24,18),
@@ -61,6 +61,13 @@ function modak() {
   for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),a=Math.atan2(z,x),r=1+.065*Math.cos(a*12);p.setXYZ(i,x*r,p.getY(i),z*r);}
   geometry.computeVertexNormals();
   const body=new T.Mesh(geometry,mat(0xffce47,.45));body.castShadow=true;group.add(body);
+  return group;
+}
+function omGift(){
+  const group=new T.Group();
+  const texture=canvasTexture(256,256,c=>{const glow=c.createRadialGradient(128,128,8,128,128,124);glow.addColorStop(0,'#fff8cfff');glow.addColorStop(.28,'#ffc83faa');glow.addColorStop(.7,'#ff8a221f');glow.addColorStop(1,'#ff8a2200');c.fillStyle=glow;c.fillRect(0,0,256,256);c.font='bold 138px Georgia';c.textAlign='center';c.textBaseline='middle';c.shadowColor='#ffbd38';c.shadowBlur=24;c.fillStyle='#fff1a6';c.fillText('ॐ',128,137);});
+  const symbol=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));symbol.scale.set(2.25,2.25,1);group.add(symbol);
+  const ring=mesh(group,'torus',0xffc640,[0,0,0],[.86,.86,.86],.8);ring.rotation.x=Math.PI/2;
   return group;
 }
 function mouse() {
@@ -174,7 +181,7 @@ export default class FestivalWorld {
     this.blessingGroundAura=new T.Group();this.blessingGroundAura.position.set(0,0,3);this.blessingGroundAura.visible=false;this.blessingGroundAura.add(groundRing);this.scene.add(this.blessingGroundAura);
     const contact=canvasTexture(128,128,c=>{const gradient=c.createRadialGradient(64,64,8,64,64,62);gradient.addColorStop(0,'#251924aa');gradient.addColorStop(.5,'#25192466');gradient.addColorStop(1,'#25192400');c.fillStyle=gradient;c.fillRect(0,0,128,128);});
     this.runnerShadow=new T.Mesh(new T.PlaneGeometry(2.2,1.65),new T.MeshBasicMaterial({map:contact,transparent:true,depthWrite:false,opacity:.8}));this.runnerShadow.rotation.x=-Math.PI/2;this.runnerShadow.position.set(0,.025,3);this.scene.add(this.runnerShadow);
-    this.templates={modak:modak(),drum:obstacle('drum'),cart:obstacle('cart'),barrier:obstacle('barrier')};
+    this.templates={modak:modak(),om:omGift(),drum:obstacle('drum'),cart:obstacle('cart'),barrier:obstacle('barrier')};
     const positions=new Float32Array(360*3);for(let i=0;i<360;i++){positions[i*3]=(Math.random()-.5)*34;positions[i*3+1]=Math.random()*14;positions[i*3+2]=Math.random()*-140;}
     const particles=new T.BufferGeometry();particles.setAttribute('position',new T.BufferAttribute(positions,3));
     this.starfield=new T.Points(particles,new T.PointsMaterial({color:0xffd078,size:.075,transparent:true,opacity:.85}));this.scene.add(this.starfield);
@@ -383,14 +390,15 @@ export default class FestivalWorld {
   }
   seed(){for(const e of this.entities)this.scene.remove(e.mesh);this.entities=[];this.routeCount=0;for(const lane of [-1,0,1])for(let z=-10-lane*2;z>-34;z-=7)this.add('modak',lane,z);this.add('drum',-1,-42);this.add('barrier',0,-54);this.add('drum',1,-66,0,'marketCart');this.add('cart',0,-80);}
   addRoute(lane:number,z:number){this.add('ramp',lane,z);this.add('cart',lane,z-4.1);this.add('rooftop',lane,z-11.9);for(let i=0;i<6;i++)this.add('modak',lane,z-3-i*2.4,2.67);}
-  add(kind:Entity['kind'],lane:number,z:number,elevation=0,appearance?:string){const selected=this.templates[appearance||kind]||this.templates[kind];if(!selected)return;const mesh=selected.clone();mesh.position.set(lane*3.1,kind==='modak'?.75+elevation:0,z);mesh.userData.appearance=selected===this.templates[appearance||kind]?(appearance||kind):kind;this.scene.add(mesh);this.entities.push({mesh,lane,kind,checked:false,elevation});}
-  start(theme=0) {if(!this.approved){this.notice('Loading the approved 3D models…');return;}this.startTheme=theme;this.state=freshState(theme);this.state.status='running';this.spawnIn=18;this.patternIndex=0;this.lastMoveTime=-10;this.hitTime=0;this.deathTime=0;this.introTime=1.45;this.blessingVisual=0;this.motion='';this.seed();const portrait=this.camera.aspect<.8;this.camera.position.set(-2.8,portrait?4.4:2.75,portrait?12.0:8.4);this.clock.getDelta();this.enableAudio();this.notice('Ganpati Bappa Morya!');this.tone(523.25,.18);this.onChange({...this.state});}
-  menu(){this.state=freshState(this.startTheme);this.patternIndex=0;this.hitTime=0;this.deathTime=0;this.introTime=0;this.blessingVisual=0;this.motion='';this.seed();this.onChange({...this.state});}
+  add(kind:Entity['kind'],lane:number,z:number,elevation=0,appearance?:string){const selected=this.templates[appearance||kind]||this.templates[kind];if(!selected)return;const mesh=selected.clone();mesh.position.set(lane*3.1,kind==='modak'?.75+elevation:kind==='om'?1.45+elevation:0,z);mesh.userData.appearance=selected===this.templates[appearance||kind]?(appearance||kind):kind;this.scene.add(mesh);this.entities.push({mesh,lane,kind,checked:false,elevation});}
+  resetRunnerPose(intro:boolean){this.runner.g.position.set(0,0,3);this.runner.g.rotation.set(0,0,0);this.runner.g.scale.set(1,1,1);this.runner.g.visible=true;this.runnerShadow.position.set(0,.025,3);this.runnerShadow.scale.setScalar(1);this.blessingGroundAura.visible=false;this.blessingVisual=0;this.mixer?.stopAllAction();this.motion='';if(intro&&this.mixer){const clip=T.AnimationClip.findByName(this.clips,'Intro');if(clip){const action=this.mixer.clipAction(clip);action.reset().setLoop(T.LoopOnce,1);action.clampWhenFinished=true;action.play();this.motion='Intro';this.mixer.update(0);}}}
+  start(theme=0) {if(!this.approved){this.notice('Loading the approved 3D models…');return;}this.startTheme=theme;this.state=freshState(theme);this.state.status='running';this.spawnIn=18;this.patternIndex=0;this.lastMoveTime=-10;this.hitTime=0;this.deathTime=0;this.introTime=1.45;this.seed();this.resetRunnerPose(true);const portrait=this.camera.aspect<.8;this.camera.position.set(-2.8,portrait?4.4:2.75,portrait?12.0:8.4);this.camera.lookAt(0,1.35,-5);this.clock.getDelta();this.enableAudio();this.notice('Ganpati Bappa Morya!');this.tone(523.25,.18);this.onChange({...this.state});}
+  menu(){this.state=freshState(this.startTheme);this.patternIndex=0;this.hitTime=0;this.deathTime=0;this.introTime=0;this.seed();this.resetRunnerPose(false);this.onChange({...this.state});}
   pause(){if(this.state.status==='running'||this.state.status==='gate'){this.gateResume=this.state.status;this.state.status='paused';this.onChange({...this.state});}}
   resume(){if(this.state.status==='paused'){this.state.status=this.gateResume;this.clock.getDelta();this.onChange({...this.state});}}
   action(action:'left'|'right'|'jump'|'slide'){if(this.state.status==='running'&&this.introTime<=0){this.hitTime=0;if(action==='left'||action==='right')this.lastMoveTime=this.state.elapsed;}move(this.state,action);}
   choose(value:string){if(this.state.status!=='gate')return;this.state.status='running';if(value==='modak'){collect(this.state);const result=reward(this.state);this.state.blessing=10;this.notice(result==='maha'?'Correct! Maha Aashirwad activated!':'Correct! Blessing Mode activated!');this.tone(660,.22);}else{this.state.combo=0;this.state.blessing=0;this.state.maha=false;this.state.invincible=0;hit(this.state);this.notice(value==='timeout'?'The gate closed. Keep going!':'That answer was not correct. Keep going!');}this.onChange({...this.state});}
-  celebrate(prefix:string){const result=reward(this.state);this.notice(result==='maha'?'Maha Aashirwad! Double score':result==='blessing'?'Blessing Mode! Ganpati Bappa Morya!':`${prefix}  +150`);this.tone(660,.17);}
+  celebrate(prefix:string){reward(this.state);this.notice(`${prefix}  +150`);this.tone(660,.17);}
   notice(message:string){this.currentNotice=message;this.noticeTime=2.7;this.onNotice(message);}
   enableAudio(){if(!this.audio){try{this.audio=new AudioContext();}catch{}}if(this.audio?.state==='suspended')void this.audio.resume();}
   tone(freq:number,length=.08){if(this.muted||!this.audio)return;const a=this.audio,o=a.createOscillator(),gain=a.createGain();o.type='sine';o.frequency.setValueAtTime(freq,a.currentTime);gain.gain.setValueAtTime(.035,a.currentTime);gain.gain.exponentialRampToValueAtTime(.001,a.currentTime+length);o.connect(gain);gain.connect(a.destination);o.start();o.stop(a.currentTime+length);}
@@ -405,10 +413,9 @@ export default class FestivalWorld {
     if(was==='running'){
       const requested=travel;const result=resolveMotion(s,before,this.entities.map(e=>({kind:e.kind,x:e.lane*3.1,z:e.mesh.position.z,disabled:!e.mesh.visible||e.mesh.userData.hit===true})),requested);
       travel=result.travel;s.distance=before.distance+travel;s.score=before.score+travel*(s.maha&&s.blessing>0?4:2);
-      if(result.blocked>=0){const obstacle=this.entities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitTime=0;this.onNotice('');this.tone(105,.7);}else{this.hitTime=1.6;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
+      if(result.blocked>=0){const obstacle=this.entities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitTime=0;for(const entity of this.entities)if(entity.kind!=='modak'&&entity.mesh.position.z>-4&&entity.mesh.position.z<8)entity.mesh.visible=false;this.onNotice('');this.tone(105,.7);}else{this.hitTime=1.6;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
     }
-    if(was==='running'&&s.status==='gate'){s.gateTime=45;this.gateOptions=['coconut','modak','flower'].sort(()=>Math.random()-.5);this.tone(880,.3);}
-    if(s.status==='gate'&&s.gateTime===0)this.choose('timeout');
+    if(was==='running'&&s.nextGate!==before.nextGate){const giftLane=((Math.floor(s.elapsed/120)+this.patternIndex)%3-1) as -1|0|1;this.add('om',giftLane,-72);this.notice('A sacred Om gift has appeared!');this.tone(784,.28);}
     if(s.status==='running'){
       for(const c of this.chunks){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       for(const c of this.themeDecor){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
@@ -416,12 +423,15 @@ export default class FestivalWorld {
       if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const route=this.approved&&this.routeCount%6===0;this.spawnIn=route?32:18+Math.random()*5;if(route)this.addRoute(lane,-147);else{const pattern=obstaclePattern(this.patternIndex++,s.distance);for(const item of pattern.obstacles)this.add(item.kind,item.lane,-147,0,item.appearance);for(let i=0;i<6;i++)this.add('modak',pattern.safeLane,-151-i*3.2);}}
       for(const e of this.entities){
         e.mesh.position.z+=travel;
-        if(e.kind==='modak'){e.mesh.rotation.y+=dt; e.mesh.position.y=e.elevation+.85+Math.sin(this.time*3+e.mesh.position.z)*.12;}
+        if(e.kind==='modak'){e.mesh.rotation.y+=dt;e.mesh.position.y=e.elevation+.85+Math.sin(this.time*3+e.mesh.position.z)*.12;}
+        if(e.kind==='om'){e.mesh.rotation.y+=dt*.9;e.mesh.position.y=e.elevation+1.45+Math.sin(this.time*2.4)*.18;}
         const dx=Math.abs(s.x-e.lane*3.1),dz=e.mesh.position.z-3;
         if(!e.checked&&dz>(e.kind==='modak'?-.65:e.kind==='cart'?2.75:e.kind==='rooftop'?5.9:1.2)){
           e.checked=true;
           if(e.kind==='modak'){
             if((dx<1.2&&Math.abs(s.jump-e.elevation)<1.7)||s.blessing>0){collect(s);e.mesh.visible=false;this.tone(940+s.modaks%4*120);}
+          }else if(e.kind==='om'){
+            if(dx<1.2){s.blessing=10;s.maha=true;s.score+=500;e.mesh.visible=false;this.notice('Maha Aashirwad Mode activated!');this.tone(1046.5,.36);}
           }else if(e.kind==='ramp'){
             // A ramp is traversable, never an impact obstacle.
           }else if(dx<1.18){
@@ -448,7 +458,7 @@ export default class FestivalWorld {
     (this.starfield.material as T.PointsMaterial).color.setHex(s.maha?0xff7f9a:0xffd078);(this.starfield.material as T.PointsMaterial).size=s.maha?.17:.075;
     if(s.maha&&running)for(let i=0;i<pos.count;i++)pos.setY(i,(pos.getY(i)-dt*2+14)%14);
     this.fireworks.forEach((f,i)=>{const phase=(this.time+i*1.7)%6/6;f.visible=s.theme!==4;f.scale.setScalar(.15+phase);(f.material as T.PointsMaterial).opacity=Math.sin(phase*Math.PI)*.8;});
-    if(s.status==='dying'){const cinematic=new T.Vector3(s.x,2.25+s.ground,-2.7);this.camera.position.lerp(cinematic,Math.min(1,dt*3.4));this.camera.lookAt(s.x,1.05+s.ground,3);}
+    if(s.status==='dying'){const cinematic=new T.Vector3(s.x+2.15,2.2+s.ground,.15);this.camera.position.lerp(cinematic,Math.min(1,dt*4.2));this.camera.lookAt(s.x,1.05+s.ground,3);}
     else if(introActive){const progress=1-this.introTime/1.45,eased=1-Math.pow(1-progress,3),portrait=this.camera.aspect<.8;this.camera.position.x=T.MathUtils.lerp(-2.8,0,eased);this.camera.position.y=T.MathUtils.lerp(portrait?4.4:2.75,portrait?4.9:3.45,eased);this.camera.position.z=T.MathUtils.lerp(portrait?12.0:8.4,portrait?12.6:10.1,eased);this.camera.lookAt(T.MathUtils.lerp(s.x,0,eased),1.35,-5);}
     else{this.camera.position.x+=(s.x*.14-this.camera.position.x)*dt*4;const targetHeight=(this.camera.aspect<.8?4.9:3.45)+s.ground*.78,targetZ=this.camera.aspect<.8?12.6:10.1;this.camera.position.y+=(targetHeight-this.camera.position.y)*Math.min(1,dt*6);this.camera.position.z+=(targetZ-this.camera.position.z)*Math.min(1,dt*6);this.camera.lookAt(this.camera.position.x*.35,1.4+s.ground*.68,-5);}
     if(this.noticeTime>0&&s.status!=='paused'){this.noticeTime-=dt;if(this.noticeTime<=0)this.onNotice('');}
