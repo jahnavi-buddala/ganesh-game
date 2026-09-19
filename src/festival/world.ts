@@ -246,9 +246,9 @@ export default class FestivalWorld {
     // The supplied lantern-path mesh contains broad baked white bands and large
     // yellow markers. Keep the asset available, but use the clearer stone road.
     if(lamp)for(const chunk of this.chunks)for(const side of [-1,1])for(const z of [0]){const lampClone=lamp.clone();lampClone.position.set(side*6.2,.12,z);lampClone.rotation.y=side<0?Math.PI:0;chunk.add(lampClone);}
-    const deityAsset=models.ganesha;if(deityAsset){this.shrine.clear();this.shrine.position.z=-114;const deity=deityAsset.scene;deity.rotation.y=-Math.PI/2;
+    const deityAsset=models.ganesha;if(deityAsset){this.shrine.clear();this.shrine.position.z=-86;const deity=deityAsset.scene;deity.rotation.y=-Math.PI/2;
     deity.updateMatrixWorld(true);const deityBounds=new T.Box3().setFromObject(deity),deitySize=deityBounds.getSize(new T.Vector3()),deityCenter=deityBounds.getCenter(new T.Vector3());
-    const deityScale=12/Math.max(.001,deitySize.y);deity.scale.setScalar(deityScale);deity.position.set(-deityCenter.x*deityScale,6-deityBounds.min.y*deityScale,-deityCenter.z*deityScale);this.shrine.add(deity);
+    const deityScale=14/Math.max(.001,deitySize.y);deity.scale.setScalar(deityScale);deity.position.set(-deityCenter.x*deityScale,6-deityBounds.min.y*deityScale,-deityCenter.z*deityScale);this.shrine.add(deity);
     const shrineGlowTexture=canvasTexture(128,128,c=>{const r=c.createRadialGradient(64,64,3,64,64,64);r.addColorStop(0,'#fff7cfff');r.addColorStop(.18,'#ffc64dcc');r.addColorStop(.52,'#ff8b284d');r.addColorStop(1,'#ff8b2800');c.fillStyle=r;c.fillRect(0,0,128,128);});
     const shrineHalo=new T.Sprite(new T.SpriteMaterial({map:shrineGlowTexture,transparent:true,depthWrite:false,blending:T.AdditiveBlending,opacity:.8}));shrineHalo.position.set(0,14,-2);shrineHalo.scale.set(30,30,1);this.shrine.add(shrineHalo);
     const shrineGlow=new T.PointLight(0xffb23f,32,60,1.45);shrineGlow.position.set(0,13,6);this.shrine.add(shrineGlow);
@@ -259,7 +259,7 @@ export default class FestivalWorld {
       for(let i=0;i<5;i++)mesh(this.shrine,'cylinder',i%2?0xf7c969:0xd86043,[side*10,18+i*.8,-1],[2.4-i*.4,.85,2.4-i*.4]);
       mesh(this.shrine,'sphere',palette.gold,[side*10,22,-1],[.35,.7,.35]);
     }
-    deity.traverse(o=>{if(o instanceof T.Mesh){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)m.fog=true;}});}
+    deity.traverse(o=>{if(o instanceof T.Mesh){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)m.fog=false;}});}
     this.approved=true;this.seed();
   }
   makeChunk(roadMat:T.Material,windowTex:T.Texture,signs:T.Texture[],variant=0) {
@@ -374,7 +374,7 @@ export default class FestivalWorld {
     for(let i=0;i<10;i++){const c=root.clone();c.position.z=12-i*18;this.scene.add(c);this.themeDecor.push(c);}
   }
   makeShrine() {
-    const g=new T.Group();g.position.set(0,0,-94);
+    const g=new T.Group();g.position.set(0,0,-86);
     for(const side of [-1,1]){
       mesh(g,'box',0xce986e,[side*8,7,0],[4,14,5]);
       for(let i=0;i<5;i++)mesh(g,'cylinder',i%2?palette.gold:0xd4a782,[side*8,14+i*1.4,0],[2.8-i*.45,1.4,2.8-i*.45]);

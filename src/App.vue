@@ -2,49 +2,16 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import FestivalWorld from './festival/world';
 import { freshState, THEMES } from './festival/rules';
-import GaneshQuiz from './quiz/GaneshQuiz.vue';
-import { QUIZ_QUESTIONS, type Question } from './quiz/data';
 import { getTopScores, submitLeaderboardScore, type LeaderboardEntry } from './leaderboard';
-const showQuiz = ref(false);
-const canvas=ref<HTMLCanvasElement>(),state=ref(freshState()),notice=ref(''),panel=ref(''),ready=ref(false),error=ref(''),selectedTheme=ref(0),muted=ref(false),fullscreen=ref(false),gateChoices=ref<string[]>([]);
+const canvas=ref<HTMLCanvasElement>(),state=ref(freshState()),notice=ref(''),panel=ref(''),ready=ref(false),error=ref(''),selectedTheme=ref(0),muted=ref(false),fullscreen=ref(false);
 const scores=ref<{score:number;modaks:number;distance:number;combo:number;date:string}[]>([]);
 const leaderboard=ref<LeaderboardEntry[]>([]),leaderboardLoading=ref(false),leaderboardError=ref('');
 const playerName=ref(''),scoreSubmitting=ref(false),scoreSubmitted=ref(false),scoreSubmitMessage=ref('');
 let world:FestivalWorld|undefined,saved=false;
-let gateCycleIndex = 0;
-const targetPattern: ('easy' | 'medium' | 'hard')[] = ['easy', 'easy', 'easy', 'medium', 'hard', 'hard'];
-const currentGateQ = ref<Question | null>(null);
-const gateAnswered = ref(false);
-const gateUserChoice = ref<number | null>(null);
-
-function pickGateQuestion() {
-  const desiredDifficulty = targetPattern[gateCycleIndex % targetPattern.length];
-  gateCycleIndex++;
-  const pool = QUIZ_QUESTIONS.filter(q => q.difficulty === desiredDifficulty);
-  currentGateQ.value = pool[Math.floor(Math.random() * pool.length)] || QUIZ_QUESTIONS[0];
-  gateAnswered.value = false;
-  gateUserChoice.value = null;
-}
-
-function answerGate(idx: number) {
-  if (gateAnswered.value || !currentGateQ.value) return;
-  gateAnswered.value = true;
-  gateUserChoice.value = idx;
-  const isCorrect = idx === currentGateQ.value.correctIndex;
-  setTimeout(() => {
-    if (isCorrect) {
-      world?.choose('modak');
-    } else {
-      world?.choose('wrong');
-    }
-    gateAnswered.value = false;
-    gateUserChoice.value = null;
-  }, 1100);
-}
 const fmt=(n:number)=>Math.floor(n).toLocaleString('en-IN');
 const clock=computed(()=>`${Math.floor(state.value.elapsed/60)}:${String(Math.floor(state.value.elapsed%60)).padStart(2,'0')}`);
 const highScore=computed(()=>scores.value[0]?.score||0),active=computed(()=>state.value.status!=='ready');
-function start(){panel.value='';saved=false;scoreSubmitted.value=false;scoreSubmitMessage.value='';gateCycleIndex=0;world?.start(selectedTheme.value);(document.activeElement as HTMLElement)?.blur();}
+function start(){panel.value='';saved=false;scoreSubmitted.value=false;scoreSubmitMessage.value='';world?.start(selectedTheme.value);(document.activeElement as HTMLElement)?.blur();}
 function menu(){panel.value='';world?.menu();}
 function sound(){muted.value=!muted.value;if(world){world.muted=muted.value;world.enableAudio();}}
 async function toggleFullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{}}
@@ -66,12 +33,7 @@ onMounted(()=>{
   try{playerName.value=localStorage.getItem('vighnaharta-player-name')||'';}catch{}
   document.addEventListener('fullscreenchange',syncFullscreen);window.addEventListener('keydown',handleEscape);
   try{world=new FestivalWorld(canvas.value!,s=>{
-    const wasGate = state.value.status === 'gate';
     state.value=s;
-    if(s.status==='gate'){
-      gateChoices.value=world?.gateOptions||[];
-      if(!wasGate) pickGateQuestion();
-    }
     if(s.status==='over'&&!saved){saved=true;scores.value=[...scores.value,{score:Math.floor(s.score),modaks:s.modaks,distance:Math.floor(s.distance),combo:s.bestCombo,date:new Date().toLocaleDateString()}].sort((a,b)=>b.score-a.score).slice(0,8);try{localStorage.setItem('vighnaharta-runs-v1',JSON.stringify(scores.value));}catch{}}
   },message=>notice.value=message);void world.assetsReady.then(()=>{ready.value=true;}).catch(e=>{error.value='The approved models could not load. Please reload to try again.';console.error(e);});}catch(e){error.value='The 3D scene could not start. Please enable hardware acceleration and reload.';console.error(e);}
 });
@@ -81,11 +43,10 @@ onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange
   <main class="game-shell" :class="{'is-playing':active,'has-blessing':state.blessing>0}">
     <canvas ref="canvas" class="world" aria-label="Vighnaharta Run 3D game. Use arrow keys to move, jump and slide." />
     <div class="screen-vignette" aria-hidden="true"></div><div v-if="!active" class="cover-art" aria-hidden="true"></div>
-    <header v-if="!active" class="topbar"><a class="wordmark" href="#" @click.prevent="menu"><span class="brand-seal">ॐ</span><span>VIGHNAHARTA<span class="wordmark-sub">THE FESTIVAL RUN</span></span></a><div class="topbar-right"><button class="topbar-quiz-btn" @click="showQuiz = true">🕉️ 50-Q QUIZ (45s)</button><span class="edition">GANESH CHATURTHI EDITION</span><button class="icon-button" @click="sound" :aria-label="muted?'Enable sound':'Mute sound'">{{muted?'♫̸':'♫'}}</button><button class="icon-button" @click="toggleFullscreen" :aria-label="fullscreen?'Exit fullscreen':'Enter fullscreen'">⛶</button></div></header>
+    <header v-if="!active" class="topbar"><a class="wordmark" href="#" @click.prevent="menu"><span class="brand-seal">ॐ</span><span>VIGHNAHARTA<span class="wordmark-sub">THE FESTIVAL RUN</span></span></a><div class="topbar-right"><span class="edition">GANESH CHATURTHI EDITION</span><button class="icon-button" @click="sound" :aria-label="muted?'Enable sound':'Mute sound'">{{muted?'♫̸':'♫'}}</button><button class="icon-button" @click="toggleFullscreen" :aria-label="fullscreen?'Exit fullscreen':'Enter fullscreen'">⛶</button></div></header>
     <section v-if="!active" class="main-menu" aria-label="Main menu">
       <div class="eyebrow">A LITTLE HERO. A DIVINE ADVENTURE.</div><div class="title-emblem" aria-hidden="true"><span>ॐ</span></div><h1>Vighnaharta<span>RUN</span></h1><p class="tagline">Beat the Vighna. Earn the Blessing.</p><p class="menu-description">A little courage. A trail of modaks.<br>One unforgettable journey to Bappa.</p>
       <button class="play-button" @click="start" :disabled="!ready"><span>▶</span>{{ready?'LET’S PLAY':'PREPARING THE FESTIVAL…'}}<span>→</span></button>
-      <button class="quiz-menu-button" @click="showQuiz = true"><span>🕉️</span> GANESH CHATURTHI 45s QUIZ <span>★</span></button>
       <div class="menu-links"><button @click="panel='guide'">⌨ &nbsp; How to play</button><button @click="openLeaderboard">♜ &nbsp; Leaderboard</button></div>
       <button class="journey-button" @click="panel='journey'"><span class="journey-dot"></span><span><small>YOUR JOURNEY BEGINS IN</small>{{THEMES[selectedTheme]}}</span><span>⌄</span></button>
       <div v-if="highScore" class="personal-best">PERSONAL BEST <b>{{fmt(highScore)}}</b></div><p v-if="error" class="error">{{error}}</p>
@@ -101,7 +62,7 @@ onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange
       <div class="run-bottom"><div class="keyboard-help"><span><kbd>←</kbd><kbd>→</kbd> Move</span><span><kbd>↑</kbd> Jump</span><span><kbd>↓</kbd> Slide</span></div><span class="run-mantra">Ganpati Bappa Morya!</span><button class="icon-button" @click="sound" :aria-label="muted?'Enable sound':'Mute sound'">{{muted?'♫̸':'♫'}}</button></div>
       <nav class="touch-controls" aria-label="Touch game controls"><button @click="world?.action('left')" aria-label="Move left">←</button><button @click="world?.action('jump')" aria-label="Jump">↑</button><button @click="world?.action('slide')" aria-label="Slide">↓</button><button @click="world?.action('right')" aria-label="Move right">→</button></nav>
     </template>
-    <div v-if="panel||['paused','gate','over'].includes(state.status)" class="modal-overlay">
+    <div v-if="panel||['paused','over'].includes(state.status)" class="modal-overlay">
       <section v-if="panel" class="modal-card" :class="{'wide-card':panel==='journey'}" role="dialog" aria-modal="true" :aria-label="panel">
         <button class="close-button" @click="panel=''" aria-label="Close dialog">×</button><span class="modal-ornament">✦ ॐ ✦</span>
         <template v-if="panel==='guide'"><p class="eyebrow">YOUR FIRST FESTIVAL RUN</p><h2>A little courage goes a long way.</h2><div class="guide-rows"><div><span>← →</span><p><b>Find your path</b>Arrow keys or A / D to switch lanes.</p></div><div><span>↑</span><p><b>Jump onto vehicle roofs</b>Up, W or Space to jump. Run up ramps and continue across rooftops.</p></div><div><span>↓</span><p><b>Duck under barriers</b>Down or S to slide. Jump onto carts or dodge around them.</p></div><div><span>ॐ</span><p><b>Receive Maha Aashirwad</b>An Om gift appears every two minutes. Collect it for double score, auto collect, and invincibility.</p></div></div><p class="help-note">On mobile, swipe or use the on-screen buttons. Escape or P pauses your run.</p><button class="play-button" @click="start">I’M READY <span>→</span></button></template>
@@ -110,60 +71,8 @@ onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange
         <template v-if="panel==='credits'"><p class="eyebrow">MADE FOR THE FESTIVAL</p><h2>Vighnaharta Run</h2><p class="credits-copy">A celebration of courage, joy, and the blessings that meet us along the way.</p><p class="help-note">Built with Vue and Three.js using custom and creator-supplied 3D festival assets, procedural street scenery, and adaptive graphics for mobile devices. Menu illustration created with OpenAI image generation. Sound effects are supplied or synthesized in the browser.</p><p class="credits-mantra">Ganpati Bappa Morya!</p><button class="secondary-button" @click="panel=''">Back to the festival</button></template>
       </section>
       <section v-else-if="state.status==='paused'" class="modal-card compact-card" role="dialog" aria-modal="true" aria-label="Game paused"><span class="modal-ornament">ॐ</span><p class="eyebrow">TAKE A BREATH</p><h2>The festival can wait.</h2><p class="help-note">Your journey will be right here.</p><button class="play-button" @click="world?.resume()">CONTINUE RUN <span>▶</span></button><button class="secondary-button" @click="start">Start again</button><button class="text-button" @click="menu">Main menu</button></section>
-      <section v-else-if="state.status==='gate'" class="modal-card gate-card gate-quiz-card" role="dialog" aria-modal="true" aria-label="Vighna Gate challenge">
-        <span class="modal-ornament">ॐ</span>
-        <p class="eyebrow">VIGHNA GATE · 45s SACRED STORY CHALLENGE</p>
-        <div class="in-game-gate-timer" :class="{ urgent: state.gateTime <= 15 }">
-          <span class="gate-timer-icon">{{ state.gateTime <= 15 ? '🔥' : '⏳' }}</span>
-          <b>{{ Math.ceil(state.gateTime) }}s</b>
-          <small>ADRENALINE TIMER</small>
-        </div>
-        <div class="gate-timer"><div><i :style="{width:Math.min(100,(state.gateTime/45)*100)+'%'}"></i></div></div>
-        
-        <template v-if="currentGateQ">
-          <div class="gate-badges-row">
-            <span class="gate-diff-pill" :class="currentGateQ.difficulty">
-              {{ currentGateQ.difficulty === 'easy' ? '⭐ Easy' : currentGateQ.difficulty === 'medium' ? '⭐⭐ Medium' : '⭐⭐⭐ Hard' }}
-            </span>
-            <span class="gate-cat-pill">{{ currentGateQ.category }}</span>
-          </div>
-          <h2 class="gate-q-title">{{ currentGateQ.question }}</h2>
-          <div class="gate-opts-grid">
-            <button
-              v-for="(opt, idx) in currentGateQ.options"
-              :key="idx"
-              class="gate-choice-btn"
-              :class="{
-                selected: gateUserChoice === idx,
-                correct: gateAnswered && idx === currentGateQ.correctIndex,
-                wrong: gateAnswered && gateUserChoice === idx && idx !== currentGateQ.correctIndex
-              }"
-              :disabled="gateAnswered"
-              @click="answerGate(idx)"
-            >
-              <span class="gate-opt-badge">{{ ['A', 'B', 'C', 'D'][idx] }}</span>
-              <span class="gate-opt-body">{{ opt }}</span>
-            </button>
-          </div>
-          <div v-if="gateAnswered" class="gate-verdict-banner">
-            <span v-if="gateUserChoice === currentGateQ.correctIndex" class="verdict-win">
-              ✨ <b>CORRECT!</b> Vighna Cleared! (+150 Combo Score)
-            </span>
-            <span v-else class="verdict-loss">
-              ✕ <b>MISSED!</b> Correct: {{ currentGateQ.options[currentGateQ.correctIndex] }}
-            </span>
-          </div>
-        </template>
-        <template v-else>
-          <h2>Vighna Gate</h2>
-          <p class="gate-prompt">Find the Modak!</p>
-          <div class="offerings"><button v-for="item in gateChoices" :key="item" @click="world?.choose(item)" :aria-label="item"><span v-if="item==='modak'" class="modak-symbol large-modak"></span><span v-else class="offering-emoji">{{item==='coconut'?'🥥':'🌺'}}</span></button></div>
-        </template>
-        <p class="help-note">Answer from the sacred story within 45 seconds to keep your combo and earn Bappa's blessings!</p>
-      </section>
       <section v-else-if="state.status==='over'" class="modal-card over-card" role="dialog" aria-modal="true" aria-label="Run complete"><span class="modal-ornament">ॐ</span><p class="eyebrow">EVERY JOURNEY IS AN OFFERING</p><h2>You offered {{state.modaks}} modaks<br>to Lord Ganesha.</h2><div class="final-score"><span>FINAL SCORE</span><strong>{{fmt(state.score)}}</strong></div><dl class="results"><div><dt>Best combo</dt><dd>×{{state.bestCombo}}</dd></div><div><dt>Modaks collected</dt><dd>{{state.modaks}}</dd></div><div><dt>Distance</dt><dd>{{fmt(state.distance)}} m</dd></div><div><dt>Time</dt><dd>{{clock}}</dd></div></dl><div class="score-submit"><label for="leaderboard-name">ENTER THE HALL OF BLESSINGS</label><div><input id="leaderboard-name" v-model="playerName" maxlength="20" autocomplete="nickname" placeholder="Your name" :disabled="scoreSubmitting||scoreSubmitted" @keyup.enter="submitFinalScore"><button @click="submitFinalScore" :disabled="scoreSubmitting||scoreSubmitted">{{scoreSubmitted?'SAVED':scoreSubmitting?'SAVING…':'SUBMIT'}}</button></div><small :class="{success:scoreSubmitted}">{{scoreSubmitMessage||'Your name and final score will appear on the global leaderboard.'}}</small></div><blockquote>“May wisdom guide your path today.”</blockquote><button class="play-button" @click="start">PLAY AGAIN <span>↻</span></button><button class="text-button" @click="menu">Main menu</button></section>
     </div>
-    <GaneshQuiz v-if="showQuiz" @close="showQuiz = false" />
   </main>
 </template>
 

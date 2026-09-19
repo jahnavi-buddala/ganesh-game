@@ -30,7 +30,6 @@ Collect modaks for points. Avoid drums, carts, gates, and festival vehicles. Mus
 - Modaks, rangoli, marigolds, diyas, drums, carts, lamps, and decorated facades
 - Connected ramps, vehicle roofs, and elevated routes
 - Maha Aashirwad collectible and blessing effects
-- Optional 45-second Ganesh Chaturthi quiz
 - Public Supabase top-ten leaderboard
 - Responsive controls and adaptive graphics for lower-memory mobile devices
 
