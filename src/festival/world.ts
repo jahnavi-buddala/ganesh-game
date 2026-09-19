@@ -205,16 +205,23 @@ export default class FestivalWorld {
   }
   async installApproved(){
     const fbx=new FBXLoader();
-    const [models,slideSource,jumpSource,deathSource]=await Promise.all([
+    const [models,animationResults]=await Promise.all([
       loadApprovedModels(),
-      fbx.loadAsync('/assets/models/meshy_mushika_slide.fbx'),
-      fbx.loadAsync('/assets/models/meshy_mushika_jump.fbx'),
-      fbx.loadAsync('/assets/models/meshy_mushika_death.fbx'),
+      Promise.allSettled([
+        fbx.loadAsync('/assets/models/meshy_mushika_slide.fbx'),
+        fbx.loadAsync('/assets/models/meshy_mushika_jump.fbx'),
+        fbx.loadAsync('/assets/models/meshy_mushika_death.fbx'),
+      ]),
     ]);if(this.disposed)return;
-    this.runner.g.clear();const hero=models['meshy-mushika-running'].scene;hero.rotation.y=Math.PI;hero.updateMatrixWorld(true);const heroBounds=new T.Box3().setFromObject(hero),heroSize=heroBounds.getSize(new T.Vector3()),heroCenter=heroBounds.getCenter(new T.Vector3()),heroScale=2.35/Math.max(.001,heroSize.y);hero.scale.setScalar(heroScale);hero.position.set(-heroCenter.x*heroScale,-heroBounds.min.y*heroScale,-heroCenter.z*heroScale);this.runner.g.add(hero,this.aura,this.blessingHalo);
-    this.mixer=new T.AnimationMixer(hero);this.clips=models['meshy-mushika-running'].animations.slice(0,1).flatMap(clip=>{const run=clip.clone();run.name='Run';const intro=clip.clone();intro.name='Intro';return[intro,run];});
+    const [slideSource,jumpSource,deathSource]=animationResults.map(result=>result.status==='fulfilled'?result.value:undefined);
+    const heroAsset=models['meshy-mushika-running'];
+    let hero:T.Group|undefined;
+    if(heroAsset){
+      this.runner.g.clear();hero=heroAsset.scene;hero.rotation.y=Math.PI;hero.updateMatrixWorld(true);const heroBounds=new T.Box3().setFromObject(hero),heroSize=heroBounds.getSize(new T.Vector3()),heroCenter=heroBounds.getCenter(new T.Vector3()),heroScale=2.35/Math.max(.001,heroSize.y);hero.scale.setScalar(heroScale);hero.position.set(-heroCenter.x*heroScale,-heroBounds.min.y*heroScale,-heroCenter.z*heroScale);this.runner.g.add(hero,this.aura,this.blessingHalo);
+      this.mixer=new T.AnimationMixer(hero);this.clips=heroAsset.animations.slice(0,1).flatMap(clip=>{const run=clip.clone();run.name='Run';const intro=clip.clone();intro.name='Intro';return[intro,run];});
+    }
     const boneMap:Record<string,string>={Hips:'Hips',Spine:'Spine',Spine1:'Spine01',Spine2:'Spine02',Neck:'neck',Head:'Head',LeftShoulder:'LeftShoulder',LeftArm:'LeftArm',LeftForeArm:'LeftForeArm',LeftHand:'LeftHand',RightShoulder:'RightShoulder',RightArm:'RightArm',RightForeArm:'RightForeArm',RightHand:'RightHand',LeftUpLeg:'LeftUpLeg',LeftLeg:'LeftLeg',LeftFoot:'LeftFoot',LeftToeBase:'LeftToeBase',RightUpLeg:'RightUpLeg',RightLeg:'RightLeg',RightFoot:'RightFoot',RightToeBase:'RightToeBase'};
-    const retarget=(source:T.Group,name:string)=>{const clip=source.animations[0];if(!clip)return;const tracks=clip.tracks.flatMap(track=>{const match=/^mixamorig([^\.]+)\.(.+)$/.exec(track.name);if(!match)return[];const targetName=boneMap[match[1]],sourceBone=source.getObjectByName(`mixamorig${match[1]}`),targetBone=hero.getObjectByName(targetName);if(!targetName||!sourceBone||!targetBone)return[];const copy=track.clone();copy.name=`${targetName}.${match[2]}`;
+    const retarget=(source:T.Group|undefined,name:string)=>{if(!source||!hero)return;const targetHero=hero,clip=source.animations[0];if(!clip)return;const tracks=clip.tracks.flatMap(track=>{const match=/^mixamorig([^\.]+)\.(.+)$/.exec(track.name);if(!match)return[];const targetName=boneMap[match[1]],sourceBone=source.getObjectByName(`mixamorig${match[1]}`),targetBone=targetHero.getObjectByName(targetName);if(!targetName||!sourceBone||!targetBone)return[];const copy=track.clone();copy.name=`${targetName}.${match[2]}`;
       if(match[2]==='quaternion'){
         if(name==='Slide'&&['Hips','Spine','Spine1','Spine2'].includes(match[1]))return[];
         // Mixamo's jump and slide clips contain root-hip roll. On Mushika's
@@ -226,18 +233,19 @@ export default class FestivalWorld {
       else if(match[1]==='Hips'&&match[2]==='position'){const targetPosition=(targetBone as T.Bone).position,baseY=copy.values[1],unitScale=Math.abs(baseY)>.001?targetPosition.y/baseY:.01,minY=name==='Death'?targetPosition.y*.5:-Infinity;for(let i=0;i<copy.values.length;i+=3){copy.values[i]=targetPosition.x;copy.values[i+1]=Math.max(minY,targetPosition.y+(copy.values[i+1]-baseY)*unitScale);copy.values[i+2]=targetPosition.z;}}
       else return[];return[copy];});this.clips.push(new T.AnimationClip(name,clip.duration,tracks));};
     retarget(jumpSource,'Jump');retarget(slideSource,'Slide');retarget(deathSource,'Death');
-    const wrap=(id:string,scale:number[])=>{const g=new T.Group();const model=models[id].scene;model.scale.set(scale[0],scale[1],scale[2]);g.add(model);return g;};
-    const normalized=(id:string,target:number[])=>{const g=new T.Group(),model=models[id].scene;model.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(model),size=bounds.getSize(new T.Vector3()),center=bounds.getCenter(new T.Vector3());const scale=Math.min(target[0]/Math.max(.001,size.x),target[1]/Math.max(.001,size.y),target[2]/Math.max(.001,size.z));model.scale.setScalar(scale);model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);g.add(model);return g;};
-    const fitted=(id:string,target:number[])=>{const g=new T.Group(),model=models[id].scene;model.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(model),size=bounds.getSize(new T.Vector3()),center=bounds.getCenter(new T.Vector3()),scale=new T.Vector3(target[0]/Math.max(.001,size.x),target[1]/Math.max(.001,size.y),target[2]/Math.max(.001,size.z));model.scale.copy(scale);model.position.set(-center.x*scale.x,-bounds.min.y*scale.y,-center.z*scale.z);g.add(model);return g;};
-    this.templates.modak=wrap('modak',[1,1,1]);this.templates.cart=wrap('festival-tram',[1,1,1]);
-    this.templates.drum=fitted('tribal-drum',[1.75,1.48,1.35]);this.templates.marketCart=fitted('marigold-market-cart',[1.95,1.48,1.75]);this.templates.barrier=fitted('marigold-temple-gate',[2.85,2.5,1.05]);this.templates.ramp=wrap('roof-ramp',[1,1,1]);
-    this.templates.rooftop=fitted('temple-rooftop',[2.472,2.67,11]);
-    this.templates.lamp=normalized('titanic-lamp',[1.35,4.4,1.35]);
-    const omPickup=omGift(),fallback=omPickup.children.find(child=>child.userData.fallback);if(fallback)omPickup.remove(fallback);const omModel=normalized('om-symbol',[1.9,2.35,.85]);omModel.position.y=.12;omPickup.add(omModel);this.templates.om=omPickup;
+    const wrap=(id:string,scale:number[])=>{const source=models[id];if(!source)return;const g=new T.Group(),model=source.scene;model.scale.set(scale[0],scale[1],scale[2]);g.add(model);return g;};
+    const normalized=(id:string,target:number[])=>{const source=models[id];if(!source)return;const g=new T.Group(),model=source.scene;model.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(model),size=bounds.getSize(new T.Vector3()),center=bounds.getCenter(new T.Vector3());const scale=Math.min(target[0]/Math.max(.001,size.x),target[1]/Math.max(.001,size.y),target[2]/Math.max(.001,size.z));model.scale.setScalar(scale);model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);g.add(model);return g;};
+    const fitted=(id:string,target:number[])=>{const source=models[id];if(!source)return;const g=new T.Group(),model=source.scene;model.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(model),size=bounds.getSize(new T.Vector3()),center=bounds.getCenter(new T.Vector3()),scale=new T.Vector3(target[0]/Math.max(.001,size.x),target[1]/Math.max(.001,size.y),target[2]/Math.max(.001,size.z));model.scale.copy(scale);model.position.set(-center.x*scale.x,-bounds.min.y*scale.y,-center.z*scale.z);g.add(model);return g;};
+    const replace=(key:string,value:T.Group|undefined)=>{if(value)this.templates[key]=value;};
+    replace('modak',wrap('modak',[1,1,1]));replace('cart',wrap('festival-tram',[1,1,1]));
+    replace('drum',fitted('tribal-drum',[1.75,1.48,1.35]));replace('marketCart',fitted('marigold-market-cart',[1.95,1.48,1.75]));replace('barrier',fitted('marigold-temple-gate',[2.85,2.5,1.05]));replace('ramp',wrap('roof-ramp',[1,1,1]));
+    replace('rooftop',fitted('temple-rooftop',[2.472,2.67,11]));
+    const lamp=normalized('titanic-lamp',[1.35,4.4,1.35]);replace('lamp',lamp);
+    const omPickup=omGift(),omModel=normalized('om-symbol',[1.9,2.35,.85]);if(omModel){const fallback=omPickup.children.find(child=>child.userData.fallback);if(fallback)omPickup.remove(fallback);omModel.position.y=.12;omPickup.add(omModel);}this.templates.om=omPickup;
     // The supplied lantern-path mesh contains broad baked white bands and large
     // yellow markers. Keep the asset available, but use the clearer stone road.
-    for(const chunk of this.chunks)for(const side of [-1,1])for(const z of [0]){const lamp=this.templates.lamp.clone();lamp.position.set(side*6.2,.12,z);lamp.rotation.y=side<0?Math.PI:0;chunk.add(lamp);}
-    this.shrine.clear();this.shrine.position.z=-114;const deity=models.ganesha.scene;deity.rotation.y=-Math.PI/2;
+    if(lamp)for(const chunk of this.chunks)for(const side of [-1,1])for(const z of [0]){const lampClone=lamp.clone();lampClone.position.set(side*6.2,.12,z);lampClone.rotation.y=side<0?Math.PI:0;chunk.add(lampClone);}
+    const deityAsset=models.ganesha;if(deityAsset){this.shrine.clear();this.shrine.position.z=-114;const deity=deityAsset.scene;deity.rotation.y=-Math.PI/2;
     deity.updateMatrixWorld(true);const deityBounds=new T.Box3().setFromObject(deity),deitySize=deityBounds.getSize(new T.Vector3()),deityCenter=deityBounds.getCenter(new T.Vector3());
     const deityScale=12/Math.max(.001,deitySize.y);deity.scale.setScalar(deityScale);deity.position.set(-deityCenter.x*deityScale,6-deityBounds.min.y*deityScale,-deityCenter.z*deityScale);this.shrine.add(deity);
     const shrineGlowTexture=canvasTexture(128,128,c=>{const r=c.createRadialGradient(64,64,3,64,64,64);r.addColorStop(0,'#fff7cfff');r.addColorStop(.18,'#ffc64dcc');r.addColorStop(.52,'#ff8b284d');r.addColorStop(1,'#ff8b2800');c.fillStyle=r;c.fillRect(0,0,128,128);});
@@ -250,7 +258,7 @@ export default class FestivalWorld {
       for(let i=0;i<5;i++)mesh(this.shrine,'cylinder',i%2?0xf7c969:0xd86043,[side*10,18+i*.8,-1],[2.4-i*.4,.85,2.4-i*.4]);
       mesh(this.shrine,'sphere',palette.gold,[side*10,22,-1],[.35,.7,.35]);
     }
-    deity.traverse(o=>{if(o instanceof T.Mesh){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)m.fog=true;}});
+    deity.traverse(o=>{if(o instanceof T.Mesh){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)m.fog=true;}});}
     this.approved=true;this.seed();
   }
   makeChunk(roadMat:T.Material,windowTex:T.Texture,signs:T.Texture[],variant=0) {
