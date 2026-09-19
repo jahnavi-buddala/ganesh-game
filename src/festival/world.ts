@@ -128,8 +128,8 @@ function obstacle(kind:Obstacle) {
 
 export default class FestivalWorld {
   state:RunState=freshState(); startTheme=0;
-  lowPower=((navigator as Navigator&{deviceMemory?:number}).deviceMemory??8)<=4||(navigator.hardwareConcurrency||8)<=4;performanceMode=this.lowPower;
-  scene=new T.Scene();camera=new T.PerspectiveCamera(62,1,.1,210);renderer:T.WebGLRenderer;composer:EffectComposer;bloom:UnrealBloomPass;
+  lowPower=(()=>{const memory=(navigator as Navigator&{deviceMemory?:number}).deviceMemory,cores=navigator.hardwareConcurrency||4,mobile=navigator.maxTouchPoints>0;return(memory??(mobile?4:8))<=4||cores<=4||(mobile&&(memory??4)<=6&&cores<=6);})();performanceMode=this.lowPower;
+  scene=new T.Scene();camera=new T.PerspectiveCamera(62,1,.1,210);renderer:T.WebGLRenderer;composer?:EffectComposer;bloom?:UnrealBloomPass;
   runner=mouse();chunks:T.Group[]=[];entities:Entity[]=[];templates:{[key:string]:T.Group};pool:Record<string,T.Group[]>={};
   clock=new T.Clock();raf=0;time=0;spawnIn=15;lastTheme=-1;starfield:T.Points;
   pixelRatio=Math.min(devicePixelRatio,this.lowPower?1: navigator.maxTouchPoints>0?1.25:1.5);frameEma=1/60;qualityTimer=0;lastUiSync=0;
@@ -145,8 +145,7 @@ export default class FestivalWorld {
     this.renderer=new T.WebGLRenderer({canvas,antialias:!this.lowPower,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(this.pixelRatio);this.renderer.outputColorSpace=T.SRGBColorSpace;
     this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.3;
-    this.composer=new EffectComposer(this.renderer);this.composer.addPass(new RenderPass(this.scene,this.camera));this.bloom=new UnrealBloomPass(new T.Vector2(1,1),.38,.3,.92);this.composer.addPass(this.bloom);
-    const studio=new RoomEnvironment();const pmrem=new T.PMREMGenerator(this.renderer);this.scene.environment=pmrem.fromScene(studio,.04).texture;studio.dispose();pmrem.dispose();
+    if(!this.lowPower){this.composer=new EffectComposer(this.renderer);this.composer.addPass(new RenderPass(this.scene,this.camera));this.bloom=new UnrealBloomPass(new T.Vector2(1,1),.38,.3,.92);this.composer.addPass(this.bloom);const studio=new RoomEnvironment();const pmrem=new T.PMREMGenerator(this.renderer);this.scene.environment=pmrem.fromScene(studio,.04).texture;studio.dispose();pmrem.dispose();}
     this.renderer.shadowMap.enabled=!this.lowPower;this.renderer.shadowMap.type=T.PCFSoftShadowMap;
     this.scene.fog=new T.Fog(0x77759a,40,145);
     this.scene.background=canvasTexture(8,512,c=>{const grd=c.createLinearGradient(0,0,0,512);grd.addColorStop(0,'#29476f');grd.addColorStop(.42,'#86658c');grd.addColorStop(.72,'#f2a06d');grd.addColorStop(1,'#ffd39a');c.fillStyle=grd;c.fillRect(0,0,8,512);});
@@ -171,7 +170,7 @@ export default class FestivalWorld {
     const signTex=signs.map(x=>label(x));
     const glow=canvasTexture(64,64,c=>{const gradient=c.createRadialGradient(32,32,0,32,32,32);gradient.addColorStop(0,'#fff6dfff');gradient.addColorStop(.12,'#ffd66c99');gradient.addColorStop(.45,'#ff981b33');gradient.addColorStop(1,'#ff981b00');c.fillStyle=gradient;c.fillRect(0,0,64,64);});
     const glowMat=new T.SpriteMaterial({map:glow,transparent:true,depthWrite:false,blending:T.AdditiveBlending,opacity:.58});
-    for(let i=0;i<10;i++){const c=batch(this.makeChunk(roadMat,windowTex,signTex,[0,1,2,0,3,1][i%6]));c.position.z=12-i*18;for(const side of [-1,1])for(const z of [-6,3]){const light=new T.Sprite(glowMat);light.position.set(side*6.2,3.7,z);light.scale.setScalar(2.6);c.add(light);}this.scene.add(c);this.chunks.push(c);}
+    const chunkVariants=new Map<number,T.Group>();for(let i=0;i<10;i++){const variant=[0,1,2,0,3,1][i%6];if(!chunkVariants.has(variant))chunkVariants.set(variant,batch(this.makeChunk(roadMat,windowTex,signTex,variant)));const c=chunkVariants.get(variant)!.clone();c.position.z=12-i*18;for(const side of [-1,1])for(const z of [-6,3]){const light=new T.Sprite(glowMat);light.position.set(side*6.2,3.7,z);light.scale.setScalar(2.6);c.add(light);}this.scene.add(c);this.chunks.push(c);}
     this.makeThemeDecor();
     this.shrine=this.makeShrine();this.scene.add(this.shrine);
     this.runner.g.position.z=3;this.scene.add(this.runner.g);
@@ -179,7 +178,7 @@ export default class FestivalWorld {
     const blessingTexture=new T.TextureLoader().load('/assets/images/blessing_aura.webp');blessingTexture.colorSpace=T.SRGBColorSpace;
     this.blessingHalo=new T.Sprite(new T.SpriteMaterial({map:blessingTexture,color:0xffd36b,transparent:true,opacity:.88,depthWrite:false,depthTest:false,blending:T.AdditiveBlending,toneMapped:false}));
     this.blessingHalo.position.set(0,1.15,.08);this.blessingHalo.scale.setScalar(3.65);this.blessingHalo.visible=false;this.blessingHalo.renderOrder=8;this.runner.g.add(this.blessingHalo);
-    const blessingGroundTexture=new T.TextureLoader().load('/assets/images/golden_blessing_ring.png');blessingGroundTexture.colorSpace=T.SRGBColorSpace;
+    const blessingGroundTexture=new T.TextureLoader().load('/assets/images/golden_blessing_ring.webp');blessingGroundTexture.colorSpace=T.SRGBColorSpace;
     const groundRing=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({map:blessingGroundTexture,transparent:true,opacity:.9,depthWrite:false,depthTest:true,blending:T.AdditiveBlending,toneMapped:false,side:T.DoubleSide}));
     groundRing.position.y=.03;groundRing.rotation.x=-Math.PI/2;groundRing.scale.setScalar(2.8);groundRing.renderOrder=7;
     this.blessingGroundAura=new T.Group();this.blessingGroundAura.position.set(0,0,3);this.blessingGroundAura.visible=false;this.blessingGroundAura.add(groundRing);this.scene.add(this.blessingGroundAura);
@@ -212,8 +211,8 @@ export default class FestivalWorld {
       fbx.loadAsync('/assets/models/meshy_mushika_jump.fbx'),
       fbx.loadAsync('/assets/models/meshy_mushika_death.fbx'),
     ]);if(this.disposed)return;
-    this.runner.g.clear();const hero=models['meshy-mushika-running'].scene;hero.rotation.y=Math.PI;hero.updateMatrixWorld(true);const heroBounds=new T.Box3().setFromObject(hero),heroSize=heroBounds.getSize(new T.Vector3()),heroCenter=heroBounds.getCenter(new T.Vector3()),heroScale=2.35/Math.max(.001,heroSize.y);hero.scale.setScalar(heroScale);hero.position.set(-heroCenter.x*heroScale,-heroBounds.min.y*heroScale,-heroCenter.z*heroScale);this.runner.g.add(hero,this.aura,this.blessingHalo);
-    this.mixer=new T.AnimationMixer(hero);this.clips=models['meshy-mushika-running'].animations.slice(0,1).flatMap(clip=>{const run=clip.clone();run.name='Run';const intro=clip.clone();intro.name='Intro';return[intro,run];});
+    this.runner.g.clear();const heroModel=models[this.lowPower?'meshy-mushika-running-mobile':'meshy-mushika-running'],hero=heroModel.scene;hero.rotation.y=Math.PI;hero.updateMatrixWorld(true);const heroBounds=new T.Box3().setFromObject(hero),heroSize=heroBounds.getSize(new T.Vector3()),heroCenter=heroBounds.getCenter(new T.Vector3()),heroScale=2.35/Math.max(.001,heroSize.y);hero.scale.setScalar(heroScale);hero.position.set(-heroCenter.x*heroScale,-heroBounds.min.y*heroScale,-heroCenter.z*heroScale);this.runner.g.add(hero,this.aura,this.blessingHalo);
+    this.mixer=new T.AnimationMixer(hero);this.clips=heroModel.animations.slice(0,1).flatMap(clip=>{const run=clip.clone();run.name='Run';const intro=clip.clone();intro.name='Intro';return[intro,run];});
     const boneMap:Record<string,string>={Hips:'Hips',Spine:'Spine',Spine1:'Spine01',Spine2:'Spine02',Neck:'neck',Head:'Head',LeftShoulder:'LeftShoulder',LeftArm:'LeftArm',LeftForeArm:'LeftForeArm',LeftHand:'LeftHand',RightShoulder:'RightShoulder',RightArm:'RightArm',RightForeArm:'RightForeArm',RightHand:'RightHand',LeftUpLeg:'LeftUpLeg',LeftLeg:'LeftLeg',LeftFoot:'LeftFoot',LeftToeBase:'LeftToeBase',RightUpLeg:'RightUpLeg',RightLeg:'RightLeg',RightFoot:'RightFoot',RightToeBase:'RightToeBase'};
     const retarget=(source:T.Group,name:string)=>{const clip=source.animations[0];if(!clip)return;const tracks=clip.tracks.flatMap(track=>{const match=/^mixamorig([^\.]+)\.(.+)$/.exec(track.name);if(!match)return[];const targetName=boneMap[match[1]],sourceBone=source.getObjectByName(`mixamorig${match[1]}`),targetBone=hero.getObjectByName(targetName);if(!targetName||!sourceBone||!targetBone)return[];const copy=track.clone();copy.name=`${targetName}.${match[2]}`;
       if(match[2]==='quaternion'){
@@ -232,11 +231,11 @@ export default class FestivalWorld {
     const wrap=(id:string,scale:number[])=>{const g=new T.Group();const model=models[id].scene;model.scale.set(scale[0],scale[1],scale[2]);g.add(model);return g;};
     const normalized=(id:string,target:number[])=>{const g=new T.Group(),model=models[id].scene;model.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(model),size=bounds.getSize(new T.Vector3()),center=bounds.getCenter(new T.Vector3());const scale=Math.min(target[0]/Math.max(.001,size.x),target[1]/Math.max(.001,size.y),target[2]/Math.max(.001,size.z));model.scale.setScalar(scale);model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);g.add(model);return g;};
     const fitted=(id:string,target:number[])=>{const g=new T.Group(),model=models[id].scene;model.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(model),size=bounds.getSize(new T.Vector3()),center=bounds.getCenter(new T.Vector3()),scale=new T.Vector3(target[0]/Math.max(.001,size.x),target[1]/Math.max(.001,size.y),target[2]/Math.max(.001,size.z));model.scale.copy(scale);model.position.set(-center.x*scale.x,-bounds.min.y*scale.y,-center.z*scale.z);g.add(model);return g;};
-    this.templates.modak=wrap('modak',[1,1,1]);this.templates.cart=wrap('festival-tram',[1,1,1]);
-    if(models['tribal-drum'])this.templates.drum=fitted('tribal-drum',[1.75,1.48,1.35]);if(models['marigold-market-cart'])this.templates.marketCart=fitted('marigold-market-cart',[1.95,1.48,1.75]);if(models['marigold-temple-gate'])this.templates.barrier=fitted('marigold-temple-gate',[2.85,2.5,1.05]);this.templates.ramp=wrap('roof-ramp',[1,1,1]);
-    this.templates.rooftop=fitted('temple-rooftop',[2.472,2.67,11]);
+    if(models.modak)this.templates.modak=wrap('modak',[1,1,1]);if(models['festival-tram'])this.templates.cart=wrap('festival-tram',[1,1,1]);
+    if(models['tribal-drum'])this.templates.drum=fitted('tribal-drum',[1.75,1.48,1.35]);if(models['marigold-market-cart'])this.templates.marketCart=fitted('marigold-market-cart',[1.95,1.48,1.75]);if(models['marigold-temple-gate'])this.templates.barrier=fitted('marigold-temple-gate',[2.85,2.5,1.05]);if(models['roof-ramp'])this.templates.ramp=wrap('roof-ramp',[1,1,1]);
+    if(models['temple-rooftop'])this.templates.rooftop=fitted('temple-rooftop',[2.472,2.67,11]);
     if(models['titanic-lamp'])this.templates.lamp=normalized('titanic-lamp',[1.35,4.4,1.35]);
-    const omPickup=omGift(),fallback=omPickup.children.find(child=>child.userData.fallback);if(fallback)omPickup.remove(fallback);const omModel=normalized('om-symbol',[1.9,2.35,.85]);omModel.position.y=.12;omPickup.add(omModel);this.templates.om=omPickup;
+    if(models['om-symbol']){const omPickup=omGift(),fallback=omPickup.children.find(child=>child.userData.fallback);if(fallback)omPickup.remove(fallback);const omModel=normalized('om-symbol',[1.9,2.35,.85]);omModel.position.y=.12;omPickup.add(omModel);this.templates.om=omPickup;}
     // Use the batched stone road here; it is substantially lighter than placing
     // a detailed path model in every repeating street chunk.
     if(this.templates.lamp&&!this.lowPower)for(const chunk of this.chunks)for(const side of [-1,1])for(const z of [0]){const lamp=this.templates.lamp.clone();lamp.position.set(side*6.2,.12,z);lamp.rotation.y=side<0?Math.PI:0;chunk.add(lamp);}
@@ -420,7 +419,7 @@ export default class FestivalWorld {
     else if(kind==='beat'){this.tone(82,.13,'sine',.022,0,55);if(Math.floor(this.state.elapsed)%4===0)this.tone(1174,.35,'sine',.008,.03);}
     else{[261.63,392,523.25].forEach((f,i)=>this.tone(f,.34,'triangle',.022,i*.08));}
   }
-  resize(){const {width,height}=this.canvas.getBoundingClientRect();if(!width||!height)return;this.renderer.setSize(width,height,false);this.composer.setSize(width,height);this.camera.aspect=width/height;const portrait=width/height<.8;this.camera.fov=portrait?66:62;this.camera.position.z=portrait?12.6:10.1;this.camera.position.y=portrait?4.9:3.45;this.camera.updateProjectionMatrix();}
+  resize(){const {width,height}=this.canvas.getBoundingClientRect();if(!width||!height)return;this.renderer.setSize(width,height,false);this.composer?.setSize(width,height);this.camera.aspect=width/height;const portrait=width/height<.8;this.camera.fov=portrait?66:62;this.camera.position.z=portrait?12.6:10.1;this.camera.position.y=portrait?4.9:3.45;this.camera.updateProjectionMatrix();}
   animate=()=>{
     if(this.disposed)return;this.raf=requestAnimationFrame(this.animate);const rawDt=this.clock.getDelta(),dt=Math.min(rawDt,.05);this.time+=dt;
     this.frameEma+=((Math.min(rawDt,.1))-this.frameEma)*.045;this.qualityTimer+=rawDt;
@@ -438,7 +437,7 @@ export default class FestivalWorld {
       for(const c of this.chunks){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       for(const c of this.themeDecor){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       this.spawnIn-=travel;
-      if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const routeEvery=s.distance>1200?4:s.distance>600?5:6,route=this.approved&&this.routeCount%routeEvery===0;this.spawnIn=route?Math.max(25,34-s.distance/300):obstacleSpacing(s.distance)+Math.random()*2.5;if(route)this.addRoute(lane,-147);else{const pattern=obstaclePattern(this.patternIndex++,s.distance);for(const item of pattern.obstacles)this.add(item.kind,item.lane,-147,0,item.appearance);for(let i=0;i<6;i++)this.add('modak',pattern.safeLane,-151-i*3.2);}}
+      if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const routeEvery=s.distance>1200?4:s.distance>600?5:6,route=this.approved&&!this.lowPower&&this.routeCount%routeEvery===0;this.spawnIn=route?Math.max(25,34-s.distance/300):obstacleSpacing(s.distance)+Math.random()*2.5;if(route)this.addRoute(lane,-147);else{const pattern=obstaclePattern(this.patternIndex++,s.distance);for(const item of pattern.obstacles)this.add(item.kind,item.lane,-147,0,item.appearance);for(let i=0;i<6;i++)this.add('modak',pattern.safeLane,-151-i*3.2);}}
       for(const e of this.entities){
         e.mesh.position.z+=travel;
         if(e.kind==='modak'){e.mesh.rotation.y+=dt;e.mesh.position.y=e.elevation+.85+Math.sin(this.time*3+e.mesh.position.z)*.12;}
@@ -480,10 +479,10 @@ export default class FestivalWorld {
     else if(introActive){const progress=1-this.introTime/1.45,eased=1-Math.pow(1-progress,3),portrait=this.camera.aspect<.8;this.camera.position.x=T.MathUtils.lerp(-2.8,0,eased);this.camera.position.y=T.MathUtils.lerp(portrait?4.4:2.75,portrait?4.9:3.45,eased);this.camera.position.z=T.MathUtils.lerp(portrait?12.0:8.4,portrait?12.6:10.1,eased);this.camera.lookAt(T.MathUtils.lerp(s.x,0,eased),1.35,-5);}
     else{this.camera.position.x+=(s.x*.14-this.camera.position.x)*dt*4;const targetHeight=(this.camera.aspect<.8?4.9:3.45)+s.ground*.78,targetZ=this.camera.aspect<.8?12.6:10.1;this.camera.position.y+=(targetHeight-this.camera.position.y)*Math.min(1,dt*6);this.camera.position.z+=(targetZ-this.camera.position.z)*Math.min(1,dt*6);this.camera.lookAt(this.camera.position.x*.35,1.4+s.ground*.68,-5);}
     if(this.noticeTime>0&&s.status!=='paused'){this.noticeTime-=dt;if(this.noticeTime<=0)this.onNotice('');}
-    if(this.performanceMode)this.renderer.render(this.scene,this.camera);else this.composer.render();if(this.time-this.lastUiSync>=.08||s.status!==was){this.lastUiSync=this.time;this.onChange({...s});}
+    if(this.performanceMode||!this.composer)this.renderer.render(this.scene,this.camera);else this.composer.render();if(this.time-this.lastUiSync>=.08||s.status!==was){this.lastUiSync=this.time;this.onChange({...s});}
   }
   dispose(){this.disposed=true;cancelAnimationFrame(this.raf);this.observer.disconnect();window.removeEventListener('keydown',this.boundKey);document.removeEventListener('visibilitychange',this.boundVisibility);this.canvas.removeEventListener('pointerdown',this.pointerStart);this.canvas.removeEventListener('pointerup',this.pointerEnd);this.collectAudio.pause();void this.audio?.close();
-    this.composer.dispose();const geometries=new Set<T.BufferGeometry>(),mats=new Set<T.Material>(),textures=new Set<T.Texture>();
+    this.composer?.dispose();const geometries=new Set<T.BufferGeometry>(),mats=new Set<T.Material>(),textures=new Set<T.Texture>();
     const release=(o:T.Object3D)=>{if(o instanceof T.Mesh||o instanceof T.Points||o instanceof T.Sprite){geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){mats.add(m);for(const v of Object.values(m))if(v instanceof T.Texture)textures.add(v);}}};
     this.scene.traverse(release);Object.values(this.templates).forEach(t=>t.traverse(release));if(this.scene.background instanceof T.Texture)textures.add(this.scene.background);if(this.scene.environment)textures.add(this.scene.environment);geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());materials.clear();this.renderer.dispose();
   }
