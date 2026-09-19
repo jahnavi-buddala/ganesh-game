@@ -2,10 +2,11 @@ import * as T from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
-export async function loadApprovedModels(onProgress?:(progress:number,label:string)=>void) {
+export async function loadApprovedModels(onProgress?:(progress:number,label:string)=>void,lowPower=false) {
   const manager=new T.LoadingManager();manager.onProgress=(url,loaded,total)=>onProgress?.(loaded/Math.max(1,total),url.split('/').pop()||'festival asset');
   const loader=new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder);
-  const names=['modak','ganesha','festival-tram','temple-rooftop','roof-ramp','tribal-drum','marigold-market-cart','titanic-lamp','marigold-temple-gate','om-symbol','meshy-mushika-running','meshy-mushika-hit'];
+  const core=['modak','ganesha','festival-tram','temple-rooftop','roof-ramp','om-symbol','meshy-mushika-running','meshy-mushika-hit'];
+  const names=lowPower?core:[...core,'tribal-drum','marigold-market-cart','titanic-lamp','marigold-temple-gate'];
   const path=(name:string)=>name==='ganesha'?'/assets/models/ganesha_3d.glb':name==='tribal-drum'?'/assets/models/festival_drum_on_wheels.glb':name==='marigold-market-cart'?'/assets/models/marigold_market_cart.glb':name==='titanic-lamp'?'/assets/models/titanic_lamp.glb':name==='marigold-temple-gate'?'/assets/models/marigold_temple_gate.glb':name==='om-symbol'?'/assets/models/om_symbol.glb':name==='meshy-mushika-running'?'/assets/models/meshy_mushika_running.glb':name==='meshy-mushika-hit'?'/assets/models/meshy_mushika_hit.glb':`/model-review-v1/models/${name}.glb`;
   const models=await Promise.all(names.map(name=>loader.loadAsync(path(name))));
   const materials=new Map<T.Material,T.MeshStandardMaterial>();
