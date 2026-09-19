@@ -12,6 +12,7 @@
     "type-check": "vue-tsc --build --force"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "dat.gui": "^0.7.9",
     "events": "^3.3.0",
     "pinia": "^2.1.7",

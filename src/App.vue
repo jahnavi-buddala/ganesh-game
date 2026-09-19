@@ -4,9 +4,12 @@ import FestivalWorld from './festival/world';
 import { freshState, THEMES } from './festival/rules';
 import GaneshQuiz from './quiz/GaneshQuiz.vue';
 import { QUIZ_QUESTIONS, type Question } from './quiz/data';
+import { getTopScores, submitLeaderboardScore, type LeaderboardEntry } from './leaderboard';
 const showQuiz = ref(false);
 const canvas=ref<HTMLCanvasElement>(),state=ref(freshState()),notice=ref(''),panel=ref(''),ready=ref(false),error=ref(''),selectedTheme=ref(0),muted=ref(false),fullscreen=ref(false),gateChoices=ref<string[]>([]);
 const scores=ref<{score:number;modaks:number;distance:number;combo:number;date:string}[]>([]);
+const leaderboard=ref<LeaderboardEntry[]>([]),leaderboardLoading=ref(false),leaderboardError=ref('');
+const playerName=ref(''),scoreSubmitting=ref(false),scoreSubmitted=ref(false),scoreSubmitMessage=ref('');
 let world:FestivalWorld|undefined,saved=false;
 let gateCycleIndex = 0;
 const targetPattern: ('easy' | 'medium' | 'hard')[] = ['easy', 'easy', 'easy', 'medium', 'hard', 'hard'];
@@ -41,14 +44,26 @@ function answerGate(idx: number) {
 const fmt=(n:number)=>Math.floor(n).toLocaleString('en-IN');
 const clock=computed(()=>`${Math.floor(state.value.elapsed/60)}:${String(Math.floor(state.value.elapsed%60)).padStart(2,'0')}`);
 const highScore=computed(()=>scores.value[0]?.score||0),active=computed(()=>state.value.status!=='ready');
-function start(){panel.value='';saved=false;gateCycleIndex=0;world?.start(selectedTheme.value);(document.activeElement as HTMLElement)?.blur();}
+function start(){panel.value='';saved=false;scoreSubmitted.value=false;scoreSubmitMessage.value='';gateCycleIndex=0;world?.start(selectedTheme.value);(document.activeElement as HTMLElement)?.blur();}
 function menu(){panel.value='';world?.menu();}
 function sound(){muted.value=!muted.value;if(world){world.muted=muted.value;world.enableAudio();}}
 async function toggleFullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{}}
 function syncFullscreen(){fullscreen.value=!!document.fullscreenElement;}
 function handleEscape(e:KeyboardEvent){if(e.key==='Escape'&&panel.value)panel.value='';}
+async function refreshLeaderboard(){leaderboardLoading.value=true;leaderboardError.value='';try{leaderboard.value=await getTopScores();}catch(error){leaderboardError.value='The online leaderboard is temporarily unavailable.';console.error(error);}finally{leaderboardLoading.value=false;}}
+function openLeaderboard(){panel.value='leaderboard';void refreshLeaderboard();}
+async function submitFinalScore(){
+  if(scoreSubmitting.value||scoreSubmitted.value||state.value.status!=='over')return;
+  scoreSubmitMessage.value='';const cleanName=playerName.value.trim().replace(/\s+/g,' ');
+  if(cleanName.length<2||cleanName.length>20){scoreSubmitMessage.value='Enter a name between 2 and 20 characters.';return;}
+  scoreSubmitting.value=true;
+  try{playerName.value=await submitLeaderboardScore(cleanName,state.value.score);scoreSubmitted.value=true;scoreSubmitMessage.value='Score submitted. Check the Hall of Blessings for the Top 10.';try{localStorage.setItem('vighnaharta-player-name',playerName.value);}catch{}await refreshLeaderboard();}
+  catch(error){scoreSubmitMessage.value='The score could not be submitted. Please try again.';console.error(error);}
+  finally{scoreSubmitting.value=false;}
+}
 onMounted(()=>{
   try{const rows=JSON.parse(localStorage.getItem('vighnaharta-runs-v1')||'[]');if(Array.isArray(rows))scores.value=rows.filter(r=>r&&Number.isFinite(r.score)&&Number.isFinite(r.modaks)&&Number.isFinite(r.distance)).slice(0,8);}catch{}
+  try{playerName.value=localStorage.getItem('vighnaharta-player-name')||'';}catch{}
   document.addEventListener('fullscreenchange',syncFullscreen);window.addEventListener('keydown',handleEscape);
   try{world=new FestivalWorld(canvas.value!,s=>{
     const wasGate = state.value.status === 'gate';
@@ -71,7 +86,7 @@ onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange
       <div class="eyebrow">A LITTLE HERO. A DIVINE ADVENTURE.</div><div class="title-emblem" aria-hidden="true"><span>ॐ</span></div><h1>Vighnaharta<span>RUN</span></h1><p class="tagline">Beat the Vighna. Earn the Blessing.</p><p class="menu-description">A little courage. A trail of modaks.<br>One unforgettable journey to Bappa.</p>
       <button class="play-button" @click="start" :disabled="!ready"><span>▶</span>{{ready?'LET’S PLAY':'PREPARING THE FESTIVAL…'}}<span>→</span></button>
       <button class="quiz-menu-button" @click="showQuiz = true"><span>🕉️</span> GANESH CHATURTHI 45s QUIZ <span>★</span></button>
-      <div class="menu-links"><button @click="panel='guide'">⌨ &nbsp; How to play</button><button @click="panel='leaderboard'">♜ &nbsp; Leaderboard</button></div>
+      <div class="menu-links"><button @click="panel='guide'">⌨ &nbsp; How to play</button><button @click="openLeaderboard">♜ &nbsp; Leaderboard</button></div>
       <button class="journey-button" @click="panel='journey'"><span class="journey-dot"></span><span><small>YOUR JOURNEY BEGINS IN</small>{{THEMES[selectedTheme]}}</span><span>⌄</span></button>
       <div v-if="highScore" class="personal-best">PERSONAL BEST <b>{{fmt(highScore)}}</b></div><p v-if="error" class="error">{{error}}</p>
     </section>
@@ -90,7 +105,7 @@ onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange
       <section v-if="panel" class="modal-card" :class="{'wide-card':panel==='journey'}" role="dialog" aria-modal="true" :aria-label="panel">
         <button class="close-button" @click="panel=''" aria-label="Close dialog">×</button><span class="modal-ornament">✦ ॐ ✦</span>
         <template v-if="panel==='guide'"><p class="eyebrow">YOUR FIRST FESTIVAL RUN</p><h2>A little courage goes a long way.</h2><div class="guide-rows"><div><span>← →</span><p><b>Find your path</b>Arrow keys or A / D to switch lanes.</p></div><div><span>↑</span><p><b>Jump onto vehicle roofs</b>Up, W or Space to jump. Run up ramps and continue across rooftops.</p></div><div><span>↓</span><p><b>Duck under barriers</b>Down or S to slide. Jump onto carts or dodge around them.</p></div><div><span>ॐ</span><p><b>Receive Maha Aashirwad</b>An Om gift appears every two minutes. Collect it for double score, auto collect, and invincibility.</p></div></div><p class="help-note">On mobile, swipe or use the on-screen buttons. Escape or P pauses your run.</p><button class="play-button" @click="start">I’M READY <span>→</span></button></template>
-        <template v-if="panel==='leaderboard'"><p class="eyebrow">YOUR BEST JOURNEYS</p><h2>Hall of blessings</h2><p class="help-note">Personal records saved on this device.</p><div v-if="scores.length" class="score-table"><div class="table-head"><span>RANK</span><span>SCORE</span><span>MODAKS</span></div><div v-for="(run,i) in scores" :key="i"><span>{{String(i+1).padStart(2,'0')}}</span><b>{{fmt(run.score)}}</b><span>{{run.modaks}}</span></div></div><div v-else class="empty-state"><span>♜</span><p>Your first adventure awaits.</p><small>Finish a run to leave your mark here.</small></div><button class="play-button" @click="start">START A RUN <span>→</span></button></template>
+        <template v-if="panel==='leaderboard'"><p class="eyebrow">TOP 10 FESTIVAL RUNNERS</p><h2>Hall of blessings</h2><p class="help-note">The best journeys shared by players everywhere.</p><div v-if="leaderboardLoading" class="empty-state"><span>ॐ</span><p>Gathering the blessings…</p></div><div v-else-if="leaderboard.length" class="score-table online-scores"><div class="table-head"><span>RANK</span><span>PLAYER</span><span>SCORE</span></div><div v-for="(run,i) in leaderboard" :key="run.created_at+i"><span>{{String(i+1).padStart(2,'0')}}</span><span>{{run.player_name}}</span><b>{{fmt(run.score)}}</b></div></div><div v-else class="empty-state"><span>♜</span><p>Your first adventure awaits.</p><small>{{leaderboardError||'Finish a run to leave your mark here.'}}</small></div><button class="play-button" @click="start">START A RUN <span>→</span></button></template>
         <template v-if="panel==='journey'"><p class="eyebrow">FIVE PLACES. ONE CELEBRATION.</p><h2>Choose your first street</h2><p class="help-note">The atmosphere changes every 500 metres.</p><div class="theme-grid"><button v-for="(theme,i) in THEMES" :key="theme" class="theme-card" :class="['theme-'+i,{selected:selectedTheme===i}]" @click="selectedTheme=i"><span class="theme-number">0{{i+1}}</span><span class="theme-name">{{theme}}<small>{{['Sunset & sandstone','Bustling stalls & warm light','Pink skies & festive flags','Golden light & temple views','Dusky mist & glowing lamps'][i]}}</small></span><span v-if="selectedTheme===i" class="theme-check">✓</span></button></div><button class="play-button" @click="start">PLAY {{THEMES[selectedTheme].toUpperCase()}} <span>→</span></button></template>
         <template v-if="panel==='credits'"><p class="eyebrow">MADE FOR THE FESTIVAL</p><h2>Vighnaharta Run</h2><p class="credits-copy">A celebration of courage, joy, and the blessings that meet us along the way.</p><p class="help-note">Inspired by your Vighnaharta Run concept. Built with Vue and Three.js, with original procedural 3D characters and scenery. Menu illustration created with OpenAI image generation. Sound is synthesized in your browser.</p><p class="credits-mantra">Ganpati Bappa Morya!</p><button class="secondary-button" @click="panel=''">Back to the festival</button></template>
       </section>
@@ -146,7 +161,7 @@ onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange
         </template>
         <p class="help-note">Answer from the sacred story within 45 seconds to keep your combo and earn Bappa's blessings!</p>
       </section>
-      <section v-else-if="state.status==='over'" class="modal-card over-card" role="dialog" aria-modal="true" aria-label="Run complete"><span class="modal-ornament">ॐ</span><p class="eyebrow">EVERY JOURNEY IS AN OFFERING</p><h2>You offered {{state.modaks}} modaks<br>to Lord Ganesha.</h2><div class="final-score"><span>FINAL SCORE</span><strong>{{fmt(state.score)}}</strong></div><dl class="results"><div><dt>Best combo</dt><dd>×{{state.bestCombo}}</dd></div><div><dt>Modaks collected</dt><dd>{{state.modaks}}</dd></div><div><dt>Distance</dt><dd>{{fmt(state.distance)}} m</dd></div><div><dt>Time</dt><dd>{{clock}}</dd></div></dl><blockquote>“May wisdom guide your path today.”</blockquote><button class="play-button" @click="start">PLAY AGAIN <span>↻</span></button><button class="text-button" @click="menu">Main menu</button></section>
+      <section v-else-if="state.status==='over'" class="modal-card over-card" role="dialog" aria-modal="true" aria-label="Run complete"><span class="modal-ornament">ॐ</span><p class="eyebrow">EVERY JOURNEY IS AN OFFERING</p><h2>You offered {{state.modaks}} modaks<br>to Lord Ganesha.</h2><div class="final-score"><span>FINAL SCORE</span><strong>{{fmt(state.score)}}</strong></div><dl class="results"><div><dt>Best combo</dt><dd>×{{state.bestCombo}}</dd></div><div><dt>Modaks collected</dt><dd>{{state.modaks}}</dd></div><div><dt>Distance</dt><dd>{{fmt(state.distance)}} m</dd></div><div><dt>Time</dt><dd>{{clock}}</dd></div></dl><div class="score-submit"><label for="leaderboard-name">ENTER THE HALL OF BLESSINGS</label><div><input id="leaderboard-name" v-model="playerName" maxlength="20" autocomplete="nickname" placeholder="Your name" :disabled="scoreSubmitting||scoreSubmitted" @keyup.enter="submitFinalScore"><button @click="submitFinalScore" :disabled="scoreSubmitting||scoreSubmitted">{{scoreSubmitted?'SAVED':scoreSubmitting?'SAVING…':'SUBMIT'}}</button></div><small :class="{success:scoreSubmitted}">{{scoreSubmitMessage||'Your name and final score will appear on the global leaderboard.'}}</small></div><blockquote>“May wisdom guide your path today.”</blockquote><button class="play-button" @click="start">PLAY AGAIN <span>↻</span></button><button class="text-button" @click="menu">Main menu</button></section>
     </div>
     <GaneshQuiz v-if="showQuiz" @close="showQuiz = false" />
   </main>
