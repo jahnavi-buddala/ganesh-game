@@ -134,13 +134,14 @@ export default class FestivalWorld {
   pixelRatio=Math.min(devicePixelRatio,navigator.maxTouchPoints>0?1.25:1.5);frameEma=1/60;qualityTimer=0;lastUiSync=0;
   onChange:(s:RunState)=>void;onNotice:(message:string)=>void;
   currentNotice='';noticeTime=0;disposed=false; observer:ResizeObserver;
-  audio:AudioContext|null=null;muted=false;beat=0;gateOptions:string[]=[];
+  audio:AudioContext|null=null;collectSounds:HTMLAudioElement[]=[];collectSoundIndex=0;muted=false;beat=0;gateOptions:string[]=[];
   gateResume:'running'|'gate'='running';boundKey:(e:KeyboardEvent)=>void;boundVisibility:()=>void;
   pointer:{x:number;y:number}|null=null;pointerStart:(e:PointerEvent)=>void;pointerEnd:(e:PointerEvent)=>void;
   shrine:T.Group; aura:T.Mesh; blessingHalo:T.Sprite; blessingGroundAura:T.Group; runnerShadow:T.Mesh; themeDecor:T.Group[]=[]; lastMoveTime=-10; fireworks:T.Points[]=[];
   assetsReady:Promise<void>; approved=false; mixer?:T.AnimationMixer; clips:T.AnimationClip[]=[]; motion=''; routeCount=0; patternIndex=0; hitFlickerTime=0; deathTime=0; introTime=0; blessingVisual=0;
   constructor(public canvas:HTMLCanvasElement,onChange:(s:RunState)=>void,onNotice:(message:string)=>void) {
     this.onChange=onChange;this.onNotice=onNotice;
+    this.collectSounds=Array.from({length:3},()=>{const audio=new Audio('/assets/audio/modak-collect.mp3');audio.preload='auto';audio.volume=.34;return audio;});
     this.renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(this.pixelRatio);this.renderer.outputColorSpace=T.SRGBColorSpace;
     this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.3;
@@ -410,6 +411,7 @@ export default class FestivalWorld {
   celebrate(prefix:string){reward(this.state);this.notice(`${prefix}  +150`);this.tone(660,.17);}
   notice(message:string){this.currentNotice=message;this.noticeTime=2.7;this.onNotice(message);}
   enableAudio(){if(!this.audio){try{this.audio=new AudioContext();}catch{}}if(this.audio?.state==='suspended')void this.audio.resume();}
+  playCollectSound(){if(this.muted)return;const clip=this.collectSounds[this.collectSoundIndex++%this.collectSounds.length];clip.currentTime=0;void clip.play().catch(()=>this.tone(940,.08));}
   tone(freq:number,length=.08){if(this.muted||!this.audio)return;const a=this.audio,o=a.createOscillator(),gain=a.createGain();o.type='sine';o.frequency.setValueAtTime(freq,a.currentTime);gain.gain.setValueAtTime(.035,a.currentTime);gain.gain.exponentialRampToValueAtTime(.001,a.currentTime+length);o.connect(gain);gain.connect(a.destination);o.start();o.stop(a.currentTime+length);}
   resize(){const {width,height}=this.canvas.getBoundingClientRect();if(!width||!height)return;this.renderer.setSize(width,height,false);this.composer.setSize(width,height);this.camera.aspect=width/height;const portrait=width/height<.8;this.camera.fov=portrait?66:62;this.camera.position.z=portrait?12.6:10.1;this.camera.position.y=portrait?4.9:3.45;this.camera.updateProjectionMatrix();}
   animate=()=>{
@@ -438,7 +440,7 @@ export default class FestivalWorld {
         if(!e.checked&&dz>(e.kind==='modak'?-.65:e.kind==='cart'?2.75:e.kind==='rooftop'?5.9:1.2)){
           e.checked=true;
           if(e.kind==='modak'){
-            if((dx<1.2&&Math.abs(s.jump-e.elevation)<1.7)||s.blessing>0){collect(s);e.mesh.visible=false;this.tone(940+s.modaks%4*120);}
+            if((dx<1.2&&Math.abs(s.jump-e.elevation)<1.7)||s.blessing>0){collect(s);e.mesh.visible=false;this.playCollectSound();}
           }else if(e.kind==='om'){
             if(dx<1.2){s.blessing=10;s.maha=true;s.score+=500;e.mesh.visible=false;this.notice('Maha Aashirwad Mode activated!');this.tone(1046.5,.36);}
           }else if(e.kind==='ramp'){
@@ -473,7 +475,7 @@ export default class FestivalWorld {
     if(this.noticeTime>0&&s.status!=='paused'){this.noticeTime-=dt;if(this.noticeTime<=0)this.onNotice('');}
     this.composer.render();if(this.time-this.lastUiSync>=.08||s.status!==was){this.lastUiSync=this.time;this.onChange({...s});}
   }
-  dispose(){this.disposed=true;cancelAnimationFrame(this.raf);this.observer.disconnect();window.removeEventListener('keydown',this.boundKey);document.removeEventListener('visibilitychange',this.boundVisibility);this.canvas.removeEventListener('pointerdown',this.pointerStart);this.canvas.removeEventListener('pointerup',this.pointerEnd);void this.audio?.close();
+  dispose(){this.disposed=true;cancelAnimationFrame(this.raf);this.observer.disconnect();window.removeEventListener('keydown',this.boundKey);document.removeEventListener('visibilitychange',this.boundVisibility);this.canvas.removeEventListener('pointerdown',this.pointerStart);this.canvas.removeEventListener('pointerup',this.pointerEnd);for(const sound of this.collectSounds){sound.pause();sound.removeAttribute('src');sound.load();}void this.audio?.close();
     this.composer.dispose();const geometries=new Set<T.BufferGeometry>(),mats=new Set<T.Material>(),textures=new Set<T.Texture>();
     const release=(o:T.Object3D)=>{if(o instanceof T.Mesh||o instanceof T.Points||o instanceof T.Sprite){geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){mats.add(m);for(const v of Object.values(m))if(v instanceof T.Texture)textures.add(v);}}};
     this.scene.traverse(release);Object.values(this.templates).forEach(t=>t.traverse(release));if(this.scene.background instanceof T.Texture)textures.add(this.scene.background);if(this.scene.environment)textures.add(this.scene.environment);geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());materials.clear();this.renderer.dispose();
