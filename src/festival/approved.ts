@@ -6,8 +6,9 @@ export async function loadApprovedModels(onProgress?:(progress:number,label:stri
   const manager=new T.LoadingManager();manager.onProgress=(url,loaded,total)=>onProgress?.(loaded/Math.max(1,total),url.split('/').pop()||'festival asset');
   const loader=new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder);
   const required=lowPower?['ganesha','meshy-mushika-running-mobile','meshy-mushika-hit-animation','meshy-mushika-recover']:['ganesha','meshy-mushika-running','meshy-mushika-hit-animation','meshy-mushika-recover'];
-  const premium=lowPower?[]:['modak','festival-tram','temple-rooftop','roof-ramp','om-symbol','tribal-drum','marigold-market-cart','titanic-lamp','marigold-temple-gate'];
-  const path=(name:string)=>name==='ganesha'?'/assets/models/ganesha_3d.glb':name==='tribal-drum'?'/assets/models/festival_drum_on_wheels.glb':name==='marigold-market-cart'?'/assets/models/marigold_market_cart.glb':name==='titanic-lamp'?'/assets/models/titanic_lamp.glb':name==='marigold-temple-gate'?'/assets/models/marigold_temple_gate.glb':name==='om-symbol'?'/assets/models/om_symbol.glb':name==='meshy-mushika-running'?'/assets/models/meshy_mushika_running.glb':name==='meshy-mushika-running-mobile'?'/assets/models/meshy_mushika_running_mobile.glb':name==='meshy-mushika-hit-animation'?'/assets/models/meshy_mushika_hit_animation.glb':name==='meshy-mushika-recover'?'/assets/models/meshy_mushika_recover.glb':`/model-review-v1/models/${name}.glb`;
+  const premium=['modak','festival-tram','temple-rooftop','roof-ramp','om-symbol','tribal-drum','marigold-market-cart','titanic-lamp','marigold-temple-gate'];
+  const mobilePaths:Record<string,string>={'festival-tram':'/assets/models/festival_tram_mobile.glb','temple-rooftop':'/assets/models/temple_rooftop_mobile.glb','om-symbol':'/assets/models/om_symbol_mobile.glb','tribal-drum':'/assets/models/festival_drum_on_wheels_mobile.glb','marigold-market-cart':'/assets/models/marigold_market_cart_mobile.glb','titanic-lamp':'/assets/models/titanic_lamp_mobile.glb','marigold-temple-gate':'/assets/models/marigold_temple_gate_mobile.glb'};
+  const path=(name:string)=>lowPower&&mobilePaths[name]?mobilePaths[name]:name==='ganesha'?'/assets/models/ganesha_3d.glb':name==='tribal-drum'?'/assets/models/festival_drum_on_wheels.glb':name==='marigold-market-cart'?'/assets/models/marigold_market_cart.glb':name==='titanic-lamp'?'/assets/models/titanic_lamp.glb':name==='marigold-temple-gate'?'/assets/models/marigold_temple_gate.glb':name==='om-symbol'?'/assets/models/om_symbol.glb':name==='meshy-mushika-running'?'/assets/models/meshy_mushika_running.glb':name==='meshy-mushika-running-mobile'?'/assets/models/meshy_mushika_running_mobile.glb':name==='meshy-mushika-hit-animation'?'/assets/models/meshy_mushika_hit_animation.glb':name==='meshy-mushika-recover'?'/assets/models/meshy_mushika_recover.glb':`/model-review-v1/models/${name}.glb`;
   const requiredModels=await Promise.all(required.map(async name=>[name,await loader.loadAsync(path(name))] as const));
   const materials=new Map<T.Material,T.MeshStandardMaterial>();
   const realtime=(source:T.Material)=>{
@@ -25,6 +26,6 @@ export async function loadApprovedModels(onProgress?:(progress:number,label:stri
     }
   });return Object.fromEntries(entries);};
   const models=prepare(requiredModels);
-  const premiumReady=lowPower?Promise.resolve({}):Promise.allSettled(premium.map(async name=>[name,await loader.loadAsync(path(name))] as const)).then(results=>prepare(results.flatMap(result=>result.status==='fulfilled'?[result.value]:[])));
+  const premiumReady=Promise.allSettled(premium.map(async name=>[name,await loader.loadAsync(path(name))] as const)).then(results=>prepare(results.flatMap(result=>result.status==='fulfilled'?[result.value]:[])));
   return {models,premiumReady};
 }
