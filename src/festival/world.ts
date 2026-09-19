@@ -233,7 +233,7 @@ export default class FestivalWorld {
     this.templates.modak=wrap('modak',[1,1,1]);this.templates.cart=wrap('festival-tram',[1,1,1]);
     this.templates.drum=fitted('tribal-drum',[1.75,1.48,1.35]);this.templates.marketCart=fitted('marigold-market-cart',[1.95,1.48,1.75]);this.templates.barrier=fitted('marigold-temple-gate',[2.85,2.5,1.05]);this.templates.ramp=wrap('roof-ramp',[1,1,1]);
     this.templates.rooftop=fitted('temple-rooftop',[2.472,2.67,11]);
-    this.templates.lamp=normalized('floor-lamp',[1.35,4.4,1.35]);
+    this.templates.lamp=normalized('titanic-lamp',[1.35,4.4,1.35]);
     const omPickup=omGift(),fallback=omPickup.children.find(child=>child.userData.fallback);if(fallback)omPickup.remove(fallback);const omModel=normalized('om-symbol',[1.9,2.35,.85]);omModel.position.y=.12;omPickup.add(omModel);this.templates.om=omPickup;
     // The supplied lantern-path mesh contains broad baked white bands and large
     // yellow markers. Keep the asset available, but use the clearer stone road.
