@@ -476,7 +476,6 @@ export default class FestivalWorld {
     if(s.maha&&running)for(let i=0;i<pos.count;i++)pos.setY(i,(pos.getY(i)-dt*2+14)%14);
     this.fireworks.forEach((f,i)=>{const phase=(this.time+i*1.7)%6/6;f.visible=!this.performanceMode&&s.theme!==4;f.scale.setScalar(.15+phase);(f.material as T.PointsMaterial).opacity=Math.sin(phase*Math.PI)*.8;});
     if(s.status==='dying'){const cinematic=new T.Vector3(s.x+2.15,2.2+s.ground,.15);this.camera.position.lerp(cinematic,Math.min(1,dt*4.2));this.camera.lookAt(s.x,1.05+s.ground,3);}
-    else if(s.status==='ready'){this.camera.position.lerp(new T.Vector3(3.8,2.55,.1),Math.min(1,dt*2.5));this.camera.lookAt(0,1.15,3);}
     else if(introActive){const progress=1-this.introTime/1.45,eased=1-Math.pow(1-progress,3),portrait=this.camera.aspect<.8;this.camera.position.x=T.MathUtils.lerp(-2.8,0,eased);this.camera.position.y=T.MathUtils.lerp(portrait?4.4:2.75,portrait?4.9:3.45,eased);this.camera.position.z=T.MathUtils.lerp(portrait?12.0:8.4,portrait?12.6:10.1,eased);this.camera.lookAt(T.MathUtils.lerp(s.x,0,eased),1.35,-5);}
     else{this.camera.position.x+=(s.x*.14-this.camera.position.x)*dt*4;const targetHeight=(this.camera.aspect<.8?4.9:3.45)+s.ground*.78,targetZ=this.camera.aspect<.8?12.6:10.1;this.camera.position.y+=(targetHeight-this.camera.position.y)*Math.min(1,dt*6);this.camera.position.z+=(targetZ-this.camera.position.z)*Math.min(1,dt*6);this.camera.lookAt(this.camera.position.x*.35,1.4+s.ground*.68,-5);}
     if(this.noticeTime>0&&s.status!=='paused'){this.noticeTime-=dt;if(this.noticeTime<=0)this.onNotice('');}
