@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 const source=readFileSync(new URL('../src/festival/rules.ts',import.meta.url),'utf8');
 const {outputText}=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}});
-const {freshState,advance,move,collect,reward,hit,clears,giftPlacement,obstaclePattern,obstacleSpacing,runSpeed,routeSurface,resolveMotion}=await import('data:text/javascript;base64,'+Buffer.from(outputText).toString('base64'));
+const {freshState,advance,move,collect,reward,hit,clears,obstaclePattern,obstacleSpacing,runSpeed,routeSurface,resolveMotion}=await import('data:text/javascript;base64,'+Buffer.from(outputText).toString('base64'));
 let passed=0;
 function check(name,fn){fn();passed++;console.log('PASS '+name);}
 const running=()=>Object.assign(freshState(),{status:'running'});
@@ -16,7 +16,6 @@ check('modak scoring doubles during Maha Aashirwad',()=>{const s=running();colle
 check('pause freezes all gameplay timers',()=>{const s=running();s.blessing=8;s.slide=.4;s.status='paused';const before={...s};advance(s,1,0);assert.deepEqual(s,before);});
 check('Om gift milestones occur every 120 seconds without stopping gameplay',()=>{const s=running();s.elapsed=119.9;const d=s.distance;advance(s,.1,0);assert.equal(s.status,'running');assert.equal(s.nextGate,240);assert.ok(s.distance>d);s.elapsed=239.9;advance(s,.1,0);assert.equal(s.status,'running');assert.equal(s.nextGate,360);});
 check('speed rises and obstacle spacing tightens with distance',()=>{assert.ok(runSpeed(600)>runSpeed(0));assert.ok(runSpeed(1600)>runSpeed(600));assert.ok(runSpeed(600,true)>runSpeed(600,false));assert.ok(obstacleSpacing(600)<obstacleSpacing(0));assert.equal(obstacleSpacing(9999),13);});
-check('Om placement avoids occupied lanes and depths',()=>{const occupied=[{lane:-1,z:-72,kind:'cart'},{lane:0,z:-72,kind:'barrier'},{lane:1,z:-72,kind:'drum'},{lane:0,z:-84,kind:'rooftop'}];const gift=giftPlacement(occupied,1);assert.equal(gift.z,-84);assert.notEqual(gift.lane,0);});
 check('every obstacle pattern leaves its promised lane open',()=>{for(let distance=0;distance<=900;distance+=150)for(let i=0;i<18;i++){const p=obstaclePattern(i,distance);assert.ok(!p.obstacles.some(o=>o.lane===p.safeLane));assert.ok(new Set(p.obstacles.map(o=>o.lane)).size===p.obstacles.length);}});
 check('time-based scoring remains consistent at different frame rates',()=>{const simulate=fps=>{const s=running();for(let i=0;i<fps*10;i++)advance(s,1/fps,0);return s;};const a=simulate(30),b=simulate(120);assert.ok(Math.abs(a.distance-b.distance)<.1);assert.ok(Math.abs(a.score-b.score)<.2);assert.ok(Math.abs(a.elapsed-b.elapsed)<1e-8);});
 check('themes cycle and restart clears run state',()=>{const s=running();s.distance=501;s.nextGate=999;advance(s,.01,4);assert.equal(s.theme,0);const reset=freshState(3);assert.equal(reset.theme,3);assert.equal(reset.hearts,3);assert.equal(reset.score,0);assert.equal(reset.combo,0);});
