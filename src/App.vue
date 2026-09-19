@@ -5,7 +5,7 @@ import { freshState, THEMES } from './festival/rules';
 import GaneshQuiz from './quiz/GaneshQuiz.vue';
 import { QUIZ_QUESTIONS, type Question } from './quiz/data';
 const showQuiz = ref(false);
-const canvas=ref<HTMLCanvasElement>(),state=ref(freshState()),notice=ref(''),panel=ref(''),ready=ref(false),error=ref(''),selectedTheme=ref(0),muted=ref(false),fullscreen=ref(false),gateChoices=ref<string[]>([]);
+const canvas=ref<HTMLCanvasElement>(),state=ref(freshState()),notice=ref(''),panel=ref(''),ready=ref(false),loadingProgress=ref(0),loadingLabel=ref('Preparing festival'),error=ref(''),selectedTheme=ref(0),muted=ref(false),fullscreen=ref(false),gateChoices=ref<string[]>([]);
 const scores=ref<{score:number;modaks:number;distance:number;combo:number;date:string}[]>([]);
 let world:FestivalWorld|undefined,saved=false;
 let gateCycleIndex = 0;
@@ -58,7 +58,7 @@ onMounted(()=>{
       if(!wasGate) pickGateQuestion();
     }
     if(s.status==='over'&&!saved){saved=true;scores.value=[...scores.value,{score:Math.floor(s.score),modaks:s.modaks,distance:Math.floor(s.distance),combo:s.bestCombo,date:new Date().toLocaleDateString()}].sort((a,b)=>b.score-a.score).slice(0,8);try{localStorage.setItem('vighnaharta-runs-v1',JSON.stringify(scores.value));}catch{}}
-  },message=>notice.value=message);void world.assetsReady.then(()=>{ready.value=true;}).catch(e=>{error.value='The approved models could not load. Please reload to try again.';console.error(e);});}catch(e){error.value='The 3D scene could not start. Please enable hardware acceleration and reload.';console.error(e);}
+  },message=>notice.value=message,(progress,label)=>{loadingProgress.value=Math.max(loadingProgress.value,progress);loadingLabel.value=label;});void world.assetsReady.then(()=>{loadingProgress.value=1;ready.value=true;}).catch(e=>{error.value='The approved models could not load. Please reload to try again.';console.error(e);});}catch(e){error.value='The 3D scene could not start. Please enable hardware acceleration and reload.';console.error(e);}
 });
 onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange',syncFullscreen);window.removeEventListener('keydown',handleEscape);});
 </script>
@@ -69,7 +69,7 @@ onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange
     <header v-if="!active" class="topbar"><a class="wordmark" href="#" @click.prevent="menu"><span class="brand-seal">ॐ</span><span>VIGHNAHARTA<span class="wordmark-sub">THE FESTIVAL RUN</span></span></a><div class="topbar-right"><button class="topbar-quiz-btn" @click="showQuiz = true">🕉️ 50-Q QUIZ (45s)</button><span class="edition">GANESH CHATURTHI EDITION</span><button class="icon-button" @click="sound" :aria-label="muted?'Enable sound':'Mute sound'">{{muted?'♫̸':'♫'}}</button><button class="icon-button" @click="toggleFullscreen" :aria-label="fullscreen?'Exit fullscreen':'Enter fullscreen'">⛶</button></div></header>
     <section v-if="!active" class="main-menu" aria-label="Main menu">
       <div class="eyebrow">A LITTLE HERO. A DIVINE ADVENTURE.</div><div class="title-emblem" aria-hidden="true"><span>ॐ</span></div><h1>Vighnaharta<span>RUN</span></h1><p class="tagline">Beat the Vighna. Earn the Blessing.</p><p class="menu-description">A little courage. A trail of modaks.<br>One unforgettable journey to Bappa.</p>
-      <button class="play-button" @click="start" :disabled="!ready"><span>▶</span>{{ready?'LET’S PLAY':'PREPARING THE FESTIVAL…'}}<span>→</span></button>
+      <button class="play-button" @click="start" :disabled="!ready"><span>▶</span>{{ready?'LET’S PLAY':`LOADING ${Math.round(loadingProgress*100)}%`}}<span>→</span></button><div v-if="!ready" class="loading-progress" role="progressbar" :aria-valuenow="Math.round(loadingProgress*100)" aria-valuemin="0" aria-valuemax="100"><i :style="{transform:`scaleX(${loadingProgress})`}"></i><small>{{loadingLabel}}</small></div>
       <button class="quiz-menu-button" @click="showQuiz = true"><span>🕉️</span> GANESH CHATURTHI 45s QUIZ <span>★</span></button>
       <div class="menu-links"><button @click="panel='guide'">⌨ &nbsp; How to play</button><button @click="panel='leaderboard'">♜ &nbsp; Leaderboard</button></div>
       <button class="journey-button" @click="panel='journey'"><span class="journey-dot"></span><span><small>YOUR JOURNEY BEGINS IN</small>{{THEMES[selectedTheme]}}</span><span>⌄</span></button>

@@ -68,11 +68,22 @@ const RUNNER_PATTERNS:RunnerPattern[]=[
   {safeLane:-1,obstacles:[{lane:0,kind:'cart'},{lane:1,kind:'drum'}]},
   {safeLane:1,obstacles:[{lane:-1,kind:'cart'},{lane:0,kind:'barrier'}]},
   {safeLane:0,obstacles:[{lane:-1,kind:'drum'},{lane:1,kind:'drum',appearance:'marketCart'}]},
+  {safeLane:-1,obstacles:[{lane:0,kind:'barrier'},{lane:1,kind:'cart'}]},
+  {safeLane:1,obstacles:[{lane:-1,kind:'drum',appearance:'marketCart'},{lane:0,kind:'cart'}]},
+  {safeLane:0,obstacles:[{lane:-1,kind:'cart'},{lane:1,kind:'cart'}]},
 ];
 /** Deterministic rows keep at least one lane open and unlock denser layouts over distance. */
 export function obstaclePattern(index:number,distance:number):RunnerPattern{
-  const available=distance<250?2:distance<650?4:RUNNER_PATTERNS.length;
+  const available=distance<250?2:distance<650?4:distance<1200?6:RUNNER_PATTERNS.length;
   return RUNNER_PATTERNS[index%available];
+}
+
+export type TrackOccupant={lane:number;z:number;kind:string};
+/** Finds an open lane and depth for a rare pickup instead of allowing overlap with a route or obstacle. */
+export function giftPlacement(occupied:TrackOccupant[],seed=0){
+  const lanes=[-1,0,1] as const,depths=[-72,-84,-96];let best={lane:lanes[Math.abs(seed)%3],z:depths[0],score:Infinity};
+  for(const z of depths)for(let offset=0;offset<lanes.length;offset++){const lane=lanes[(offset+Math.abs(seed))%lanes.length];const score=occupied.filter(item=>item.kind!=='modak'&&item.lane===lane&&Math.abs(item.z-z)<12).length;if(score<best.score)best={lane,z,score};if(score===0)return{lane,z};}
+  return{lane:best.lane,z:best.z};
 }
 
 /** The road moves toward a runner positioned at z=3. */
