@@ -128,7 +128,7 @@ function obstacle(kind:Obstacle) {
 
 export default class FestivalWorld {
   state:RunState=freshState(); startTheme=0;
-  lowPower=(()=>{const memory=(navigator as Navigator&{deviceMemory?:number}).deviceMemory,cores=navigator.hardwareConcurrency||4,mobile=navigator.maxTouchPoints>0;return(memory??(mobile?4:8))<=4||cores<=4||(mobile&&(memory??4)<=6&&cores<=6);})();performanceMode=this.lowPower;
+  lowPower=(()=>{const memory=(navigator as Navigator&{deviceMemory?:number}).deviceMemory,cores=navigator.hardwareConcurrency||4,mobile=navigator.maxTouchPoints>0||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||matchMedia('(pointer: coarse)').matches;return memory!==undefined?memory<=4||cores<=4||(mobile&&memory<=6&&cores<=6):mobile||cores<=4;})();performanceMode=this.lowPower;
   scene=new T.Scene();camera=new T.PerspectiveCamera(62,1,.1,210);renderer:T.WebGLRenderer;composer?:EffectComposer;bloom?:UnrealBloomPass;
   runner=mouse();chunks:T.Group[]=[];entities:Entity[]=[];templates:{[key:string]:T.Group};pool:Record<string,T.Group[]>={};
   clock=new T.Clock();raf=0;time=0;spawnIn=15;lastTheme=-1;starfield:T.Points;
@@ -437,7 +437,7 @@ export default class FestivalWorld {
       for(const c of this.chunks){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       for(const c of this.themeDecor){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       this.spawnIn-=travel;
-      if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const routeEvery=s.distance>1200?4:s.distance>600?5:6,route=this.approved&&!this.lowPower&&this.routeCount%routeEvery===0;this.spawnIn=route?Math.max(25,34-s.distance/300):obstacleSpacing(s.distance)+Math.random()*2.5;if(route)this.addRoute(lane,-147);else{const pattern=obstaclePattern(this.patternIndex++,s.distance);for(const item of pattern.obstacles)this.add(item.kind,item.lane,-147,0,item.appearance);for(let i=0;i<6;i++)this.add('modak',pattern.safeLane,-151-i*3.2);}}
+      if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const routeEvery=s.distance>1200?4:s.distance>600?5:6,route=this.approved&&!this.lowPower&&!!this.templates.ramp&&!!this.templates.rooftop&&this.routeCount%routeEvery===0;this.spawnIn=route?Math.max(25,34-s.distance/300):obstacleSpacing(s.distance)+Math.random()*2.5;if(route)this.addRoute(lane,-147);else{const pattern=obstaclePattern(this.patternIndex++,s.distance);for(const item of pattern.obstacles)this.add(item.kind,item.lane,-147,0,item.appearance);for(let i=0;i<6;i++)this.add('modak',pattern.safeLane,-151-i*3.2);}}
       for(const e of this.entities){
         e.mesh.position.z+=travel;
         if(e.kind==='modak'){e.mesh.rotation.y+=dt;e.mesh.position.y=e.elevation+.85+Math.sin(this.time*3+e.mesh.position.z)*.12;}
