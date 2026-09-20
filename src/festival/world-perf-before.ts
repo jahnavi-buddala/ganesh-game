@@ -6,21 +6,18 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { loadApprovedModels } from './approved';
-import { ModelInstances } from './instances';
 import { resolveMotion } from './rules';
-import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { advance, clears, collect, freshState, hit, move, obstaclePattern, obstacleSpacing, reward, type Obstacle, type RunState } from './rules';
 
-type Entity = { mesh:T.Group; lane:number; kind:Obstacle|'modak'|'om'|'ramp'|'rooftop'; checked:boolean; elevation:number; pool?:ModelInstances };
+type Entity = { mesh:T.Group; lane:number; kind:Obstacle|'modak'|'om'|'ramp'|'rooftop'; checked:boolean; elevation:number };
 const palette = {gold:0xe9aa35, red:0x9e2034, stone:0xba7956, ivory:0xffdfac, pink:0xd8918e};
 const geo = {
-  box:mergeVertices(new RoundedBoxGeometry(1,1,1,2,.035),1e-8), sphere:new T.SphereGeometry(1,24,18),
+  box:new RoundedBoxGeometry(1,1,1,2,.035), sphere:new T.SphereGeometry(1,24,18),
   cylinder:new T.CylinderGeometry(1,1,1,20), cone:new T.ConeGeometry(1,1,24),
   plane:new T.PlaneGeometry(1,1), torus:new T.TorusGeometry(1,.07,6,32),
 };
 const materials = new Map<string,T.MeshStandardMaterial>();
-const streetMaterials = new Map<string,T.MeshStandardMaterial>();
-const panelMaterials = new Map<T.Texture,T.MeshStandardMaterial>();
 function mat(color:number, glow=0) {
   const key = `${color}:${glow}`;
   if (!materials.has(key)) materials.set(key,new T.MeshStandardMaterial({color,roughness:.72,envMapIntensity:.4,metalness:color===palette.gold?.55:0,emissive:color,emissiveIntensity:glow}));
@@ -37,8 +34,7 @@ function label(text:string,w=512,h=160) {
   return canvasTexture(w,h,c=>{c.fillStyle='#732129';c.fillRect(0,0,w,h);c.strokeStyle='#ffc66e';c.lineWidth=8;c.strokeRect(12,12,w-24,h-24);c.font=`bold ${text==='ॐ'?112:46}px Georgia`;c.fillStyle='#ffe0a2';c.textAlign='center';c.textBaseline='middle';c.fillText(text,w/2,h/2);});
 }
 function panel(parent:T.Object3D, texture:T.Texture, pos:number[],scale:number[]) {
-  if(!panelMaterials.has(texture))panelMaterials.set(texture,new T.MeshStandardMaterial({map:texture,roughness:.8,side:T.DoubleSide}));
-  const m=new T.Mesh(geo.plane,panelMaterials.get(texture)!);m.position.set(pos[0],pos[1],pos[2]);m.scale.set(scale[0],scale[1],1);parent.add(m);return m;
+  const m=new T.Mesh(geo.plane,new T.MeshStandardMaterial({map:texture,roughness:.8,side:T.DoubleSide}));m.position.set(pos[0],pos[1],pos[2]);m.scale.set(scale[0],scale[1],1);parent.add(m);return m;
 }
 function curve(parent:T.Object3D, points:T.Vector3[], radius:number,color:number) {
   const m=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),24,radius,6,false),mat(color));parent.add(m);return m;
@@ -48,23 +44,10 @@ function batch(group:T.Group) {
   group.updateMatrixWorld(true);
   const byMaterial=new Map<T.Material,T.BufferGeometry[]>();
   group.traverse(o=>{if(o instanceof T.Mesh&&!Array.isArray(o.material)){
-    const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld);
-    if(!geometry.index)geometry.setIndex(Array.from({length:geometry.attributes.position.count},(_,i)=>i));
-    let material=o.material;
-    // Our plain solid materials differ only in color and these lighting settings.
-    // Bake their linear colors into vertices to share a draw, without simplifying geometry.
-    if(material instanceof T.MeshStandardMaterial&&[...materials.values()].includes(material)&&material.emissiveIntensity===0){
-      const key=[material.roughness,material.metalness,material.envMapIntensity].join(':');
-      if(!streetMaterials.has(key)){const shared=material.clone();shared.color.set(0xffffff);shared.emissive.set(0);shared.vertexColors=true;streetMaterials.set(key,shared);}
-      const colors=new Float32Array(geometry.attributes.position.count*3);
-      for(let i=0;i<colors.length;i+=3){colors[i]=material.color.r;colors[i+1]=material.color.g;colors[i+2]=material.color.b;}
-      geometry.setAttribute('color',new T.BufferAttribute(colors,3));material=streetMaterials.get(key)!;
-    }
-    // Keep mapped signs, paving and windows intact when merging.
-    if(!geometry.attributes.uv)geometry.setAttribute('uv',new T.BufferAttribute(new Float32Array(geometry.attributes.position.count*2),2));
-    for(const name of Object.keys(geometry.attributes))if(!['position','normal','uv','color'].includes(name))geometry.deleteAttribute(name);
-    if(!byMaterial.has(material))byMaterial.set(material,[]);
-    byMaterial.get(material)!.push(geometry);
+    const source=o.geometry.clone().applyMatrix4(o.matrixWorld);const geometry=source.index?source.toNonIndexed():source;if(geometry!==source)source.dispose();
+    for(const name of Object.keys(geometry.attributes))if(name!=='position'&&name!=='normal')geometry.deleteAttribute(name);
+    if(!byMaterial.has(o.material))byMaterial.set(o.material,[]);
+    byMaterial.get(o.material)!.push(geometry);
   }});
   const result=new T.Group();
   for(const [material,geometries] of byMaterial){const geometry=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());if(geometry){const m=new T.Mesh(geometry,material);m.castShadow=true;m.receiveShadow=true;result.add(m);}}
@@ -87,9 +70,7 @@ function omGift(){
   const ring=mesh(group,'torus',0xffc640,[0,0,0],[1.05,1.05,1.05],.8);ring.rotation.x=Math.PI/2;
   const outer=mesh(group,'torus',0xffe58c,[0,.04,0],[1.35,1.35,1.35],.6);outer.rotation.x=Math.PI/2;
   const beam=new T.Mesh(new T.CylinderGeometry(.14,.72,6,20,1,true),new T.MeshBasicMaterial({color:0xffcf55,transparent:true,opacity:.18,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide}));beam.position.y=2.2;group.add(beam);
-  // The pickup glow light lives permanently in the scene (see omLight). Cloning a
-  // light per pickup changes the scene light count, which forces every standard
-  // material shader to recompile mid-run - a long freeze on weak devices.
+  const light=new T.PointLight(0xffc247,7,13,1.8);light.position.y=1.2;group.add(light);
   return group;
 }
 function mouse() {
@@ -150,24 +131,18 @@ export default class FestivalWorld {
   scene=new T.Scene();camera=new T.PerspectiveCamera(62,1,.1,210);renderer:T.WebGLRenderer;composer:EffectComposer;bloom:UnrealBloomPass;
   runner=mouse();chunks:T.Group[]=[];entities:Entity[]=[];templates:{[key:string]:T.Group};
   clock=new T.Clock();raf=0;time=0;spawnIn=15;lastTheme=-1;starfield:T.Points;
-  pixelRatio=Math.min(devicePixelRatio,navigator.maxTouchPoints>0?1.25:1.5);lastUiSync=0;renderRequested=true;
-  instancePools=new Map<string,ModelInstances>();renderFrustum=new T.Frustum();projectionView=new T.Matrix4();
-  collisionBodies:{kind:string;x:number;z:number;disabled:boolean}[]=[];collisionEntities:Entity[]=[];
+  pixelRatio=Math.min(devicePixelRatio,navigator.maxTouchPoints>0?1.25:1.5);frameEma=1/60;qualityTimer=0;lastUiSync=0;
   onChange:(s:RunState)=>void;onNotice:(message:string)=>void;
   currentNotice='';noticeTime=0;disposed=false; observer:ResizeObserver;
   audio:AudioContext|null=null;collectSounds:HTMLAudioElement[]=[];collectSoundIndex=0;muted=false;beat=0;gateOptions:string[]=[];
   gateResume:'running'|'gate'='running';boundKey:(e:KeyboardEvent)=>void;boundVisibility:()=>void;
   pointer:{x:number;y:number}|null=null;pointerStart:(e:PointerEvent)=>void;pointerEnd:(e:PointerEvent)=>void;
   shrine:T.Group; aura:T.Mesh; blessingHalo:T.Sprite; blessingGroundAura:T.Group; runnerShadow:T.Mesh; themeDecor:T.Group[]=[]; lastMoveTime=-10; fireworks:T.Points[]=[];
-  omLight=new T.PointLight(0xffc247,0,13,1.8);
   assetsReady:Promise<void>; approved=false; mixer?:T.AnimationMixer; clips:T.AnimationClip[]=[]; motion=''; routeCount=0; patternIndex=0; hitFlickerTime=0; deathTime=0; introTime=0; blessingVisual=0;
   constructor(public canvas:HTMLCanvasElement,onChange:(s:RunState)=>void,onNotice:(message:string)=>void) {
     this.onChange=onChange;this.onNotice=onNotice;
     this.collectSounds=Array.from({length:3},()=>{const audio=new Audio('/assets/audio/modak-collect.mp3');audio.preload='auto';audio.volume=.34;return audio;});
-    // All output goes through the EffectComposer, which renders into plain
-    // (non-multisampled) targets, so browser MSAA never reaches the scene.
-    // Requesting it only adds a large hidden framebuffer + a resolve every frame.
-    this.renderer=new T.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
+    this.renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(this.pixelRatio);this.renderer.outputColorSpace=T.SRGBColorSpace;
     this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.3;
     this.composer=new EffectComposer(this.renderer);this.composer.addPass(new RenderPass(this.scene,this.camera));this.bloom=new UnrealBloomPass(new T.Vector2(1,1),.38,.3,.92);this.composer.addPass(this.bloom);
@@ -179,7 +154,6 @@ export default class FestivalWorld {
     const sun=new T.DirectionalLight(0xff9d4d,2.85);sun.position.set(-15,22,12);sun.castShadow=true;
     sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-20,right:20,top:25,bottom:-25,far:100});sun.shadow.bias=-.0008;this.scene.add(sun);
     const fill=new T.DirectionalLight(0x829ee8,.72);fill.position.set(8,11,-12);this.scene.add(fill);
-    this.scene.add(this.omLight);
     this.camera.position.set(0,3.45,10.1);this.camera.lookAt(0,1.4,-5);
     const roadTexture=canvasTexture(512,512,c=>{
       c.fillStyle='#342c33';c.fillRect(0,0,512,512);
@@ -197,8 +171,7 @@ export default class FestivalWorld {
     const signTex=signs.map(x=>label(x));
     const glow=canvasTexture(64,64,c=>{const gradient=c.createRadialGradient(32,32,0,32,32,32);gradient.addColorStop(0,'#fff6dfff');gradient.addColorStop(.12,'#ffd66c99');gradient.addColorStop(.45,'#ff981b33');gradient.addColorStop(1,'#ff981b00');c.fillStyle=gradient;c.fillRect(0,0,64,64);});
     const glowMat=new T.SpriteMaterial({map:glow,transparent:true,depthWrite:false,blending:T.AdditiveBlending,opacity:.58});
-    const streetTemplates=new Map<number,T.Group>();
-    for(let i=0;i<10;i++){const variant=[0,1,2,0,3,1][i%6];if(!streetTemplates.has(variant))streetTemplates.set(variant,batch(this.makeChunk(roadMat,windowTex,signTex,variant)));const c=streetTemplates.get(variant)!.clone();c.position.z=12-i*18;for(const side of [-1,1])for(const z of [-6,3]){const light=new T.Sprite(glowMat);light.position.set(side*6.2,3.7,z);light.scale.setScalar(2.6);c.add(light);}this.scene.add(c);this.chunks.push(c);}
+    for(let i=0;i<10;i++){const c=batch(this.makeChunk(roadMat,windowTex,signTex,[0,1,2,0,3,1][i%6]));c.position.z=12-i*18;for(const side of [-1,1])for(const z of [-6,3]){const light=new T.Sprite(glowMat);light.position.set(side*6.2,3.7,z);light.scale.setScalar(2.6);c.add(light);}this.scene.add(c);this.chunks.push(c);}
     this.makeThemeDecor();
     this.shrine=this.makeShrine();this.scene.add(this.shrine);
     this.runner.g.position.z=3;this.scene.add(this.runner.g);
@@ -272,8 +245,7 @@ export default class FestivalWorld {
     const omPickup=omGift(),omModel=normalized('om-symbol',[1.9,2.35,.85]);if(omModel){const fallback=omPickup.children.find(child=>child.userData.fallback);if(fallback)omPickup.remove(fallback);omModel.position.y=.12;omPickup.add(omModel);}this.templates.om=omPickup;
     // The supplied lantern-path mesh contains broad baked white bands and large
     // yellow markers. Keep the asset available, but use the clearer stone road.
-    for(const key of ['modak','lamp','drum','marketCart','barrier','cart','ramp','rooftop']){const template=this.templates[key];if(template)this.instancePools.set(key,new ModelInstances(this.scene,template));}
-    if(lamp)for(const chunk of this.chunks)for(const side of [-1,1])for(const z of [0]){const lampClone=this.instancePools.get('lamp')!.create();lampClone.position.set(side*6.2,.12,z);lampClone.rotation.y=side<0?Math.PI:0;chunk.add(lampClone);}
+    if(lamp)for(const chunk of this.chunks)for(const side of [-1,1])for(const z of [0]){const lampClone=lamp.clone();lampClone.position.set(side*6.2,.12,z);lampClone.rotation.y=side<0?Math.PI:0;chunk.add(lampClone);}
     const deityAsset=models.ganesha;if(deityAsset){this.shrine.clear();this.shrine.position.z=-86;const deity=deityAsset.scene;deity.rotation.y=-Math.PI/2;
     deity.updateMatrixWorld(true);const deityBounds=new T.Box3().setFromObject(deity),deitySize=deityBounds.getSize(new T.Vector3()),deityCenter=deityBounds.getCenter(new T.Vector3());
     const deityScale=14/Math.max(.001,deitySize.y);deity.scale.setScalar(deityScale);deity.position.set(-deityCenter.x*deityScale,6-deityBounds.min.y*deityScale,-deityCenter.z*deityScale);this.shrine.add(deity);
@@ -426,9 +398,9 @@ export default class FestivalWorld {
     mesh(deity,'torus',palette.gold,[0,3,.1],[2.9,3.2,1],.5);
     return g;
   }
-  seed(){for(const e of this.entities){if(e.pool)e.pool.remove(e.mesh);else this.scene.remove(e.mesh);}this.entities=[];this.omLight.intensity=0;this.routeCount=0;for(const lane of [-1,0,1])for(let z=-10-lane*2;z>-34;z-=7)this.add('modak',lane,z);this.add('drum',-1,-42);this.add('barrier',0,-54);this.add('drum',1,-66,0,'marketCart');this.add('cart',0,-80);}
+  seed(){for(const e of this.entities)this.scene.remove(e.mesh);this.entities=[];this.routeCount=0;for(const lane of [-1,0,1])for(let z=-10-lane*2;z>-34;z-=7)this.add('modak',lane,z);this.add('drum',-1,-42);this.add('barrier',0,-54);this.add('drum',1,-66,0,'marketCart');this.add('cart',0,-80);}
   addRoute(lane:number,z:number){this.add('ramp',lane,z);this.add('cart',lane,z-4.1);this.add('rooftop',lane,z-11.9);for(let i=0;i<6;i++)this.add('modak',lane,z-3-i*2.4,2.67);}
-  add(kind:Entity['kind'],lane:number,z:number,elevation=0,appearance?:string){const selected=this.templates[appearance||kind]||this.templates[kind];if(!selected)return;const pool=this.instancePools.get(appearance||kind),mesh=pool?pool.create():selected.clone();mesh.position.set(lane*3.1,kind==='modak'?.75+elevation:kind==='om'?elevation:0,z);mesh.userData.appearance=selected===this.templates[appearance||kind]?(appearance||kind):kind;this.scene.add(mesh);this.entities.push({mesh,lane,kind,checked:false,elevation,pool});}
+  add(kind:Entity['kind'],lane:number,z:number,elevation=0,appearance?:string){const selected=this.templates[appearance||kind]||this.templates[kind];if(!selected)return;const mesh=selected.clone();mesh.position.set(lane*3.1,kind==='modak'?.75+elevation:kind==='om'?elevation:0,z);mesh.userData.appearance=selected===this.templates[appearance||kind]?(appearance||kind):kind;this.scene.add(mesh);this.entities.push({mesh,lane,kind,checked:false,elevation});}
   resetRunnerPose(intro:boolean){this.runner.g.position.set(0,0,3);this.runner.g.rotation.set(0,0,0);this.runner.g.scale.set(1,1,1);this.runner.g.visible=true;this.runnerShadow.position.set(0,.025,3);this.runnerShadow.scale.setScalar(1);this.blessingGroundAura.visible=false;this.blessingVisual=0;this.mixer?.stopAllAction();this.motion='';if(intro&&this.mixer){const clip=T.AnimationClip.findByName(this.clips,'Intro');if(clip){const action=this.mixer.clipAction(clip);action.reset().setLoop(T.LoopOnce,1);action.clampWhenFinished=true;action.play();this.motion='Intro';this.mixer.update(0);}}}
   start(theme=0) {if(!this.approved){this.notice('Loading the approved 3D models…');return;}this.startTheme=theme;this.state=freshState(theme);this.state.status='running';this.spawnIn=18;this.patternIndex=0;this.lastMoveTime=-10;this.hitFlickerTime=0;this.deathTime=0;this.introTime=1.45;this.seed();this.resetRunnerPose(true);const portrait=this.camera.aspect<.8;this.camera.position.set(-2.8,portrait?4.4:2.75,portrait?12.0:8.4);this.camera.lookAt(0,1.35,-5);this.clock.getDelta();this.enableAudio();this.notice('Ganpati Bappa Morya!');this.tone(523.25,.18);this.onChange({...this.state});}
   menu(){this.state=freshState(this.startTheme);this.patternIndex=0;this.hitFlickerTime=0;this.deathTime=0;this.introTime=0;this.seed();this.resetRunnerPose(false);this.onChange({...this.state});}
@@ -441,48 +413,29 @@ export default class FestivalWorld {
   enableAudio(){if(!this.audio){try{this.audio=new AudioContext();}catch{}}if(this.audio?.state==='suspended')void this.audio.resume();}
   playCollectSound(){if(this.muted)return;const clip=this.collectSounds[this.collectSoundIndex++%this.collectSounds.length];clip.currentTime=0;void clip.play().catch(()=>this.tone(940,.08));}
   tone(freq:number,length=.08){if(this.muted||!this.audio)return;const a=this.audio,o=a.createOscillator(),gain=a.createGain();o.type='sine';o.frequency.setValueAtTime(freq,a.currentTime);gain.gain.setValueAtTime(.035,a.currentTime);gain.gain.exponentialRampToValueAtTime(.001,a.currentTime+length);o.connect(gain);gain.connect(a.destination);o.start();o.stop(a.currentTime+length);}
-  resize(){this.renderRequested=true;const {width,height}=this.canvas.getBoundingClientRect();if(!width||!height)return;this.renderer.setSize(width,height,false);this.composer.setSize(width,height);
-    // Bloom is a soft blur, so its internal mip chain can run at half resolution
-    // with no visible difference while costing a quarter of the fill rate.
-    const ratio=this.renderer.getPixelRatio();this.bloom.setSize(width*ratio/2,height*ratio/2);
-    this.camera.aspect=width/height;const portrait=width/height<.8;this.camera.fov=portrait?66:62;this.camera.position.z=portrait?12.6:10.1;this.camera.position.y=portrait?4.9:3.45;this.camera.updateProjectionMatrix();}
+  resize(){const {width,height}=this.canvas.getBoundingClientRect();if(!width||!height)return;this.renderer.setSize(width,height,false);this.composer.setSize(width,height);this.camera.aspect=width/height;const portrait=width/height<.8;this.camera.fov=portrait?66:62;this.camera.position.z=portrait?12.6:10.1;this.camera.position.y=portrait?4.9:3.45;this.camera.updateProjectionMatrix();}
   animate=()=>{
-    if(this.disposed)return;this.raf=requestAnimationFrame(this.animate);
-    const rawDt=this.clock.getDelta();
-    // The menu has opaque artwork. Do not heat the phone rendering an invisible world.
-    if(document.hidden||this.state.status==='ready')return;
-    if((this.state.status==='paused'||this.state.status==='over')&&!this.renderRequested)return;
-    const dt=this.state.status==='paused'||this.state.status==='over'?0:Math.min(rawDt,.05);
-    this.time+=dt;this.renderRequested=false;
+    if(this.disposed)return;this.raf=requestAnimationFrame(this.animate);const rawDt=this.clock.getDelta(),dt=Math.min(rawDt,.05);this.time+=dt;
+    this.frameEma+=((Math.min(rawDt,.1))-this.frameEma)*.045;this.qualityTimer+=rawDt;
+    if(this.qualityTimer>2){this.qualityTimer=0;const ceiling=Math.min(devicePixelRatio,navigator.maxTouchPoints>0?1.25:1.5);let next=this.pixelRatio;if(this.frameEma>.023)next=Math.max(1,next-.15);else if(this.frameEma<.018)next=Math.min(ceiling,next+.1);if(Math.abs(next-this.pixelRatio)>.01){this.pixelRatio=next;this.renderer.setPixelRatio(next);}}
     const s=this.state;const was=s.status;const before={...s};
     const introActive=was==='running'&&this.introTime>0;if(introActive)this.introTime=Math.max(0,this.introTime-dt);
     let travel=advance(s,introActive?0:dt,this.startTheme)||0;
     if(was==='running'){
-      // Include the longest rooftop and connected route partners; never test collectibles as solids.
-      let bodyCount=0;
-      for(const entity of this.entities){
-        const z=entity.mesh.position.z;
-        if(entity.kind==='modak'||entity.kind==='om'||!entity.mesh.visible||entity.mesh.userData.hit===true||z<3-travel-24||z>27)continue;
-        const body=this.collisionBodies[bodyCount]||(this.collisionBodies[bodyCount]={kind:entity.kind,x:0,z:0,disabled:false});
-        body.kind=entity.kind;body.x=entity.lane*3.1;body.z=z;body.disabled=false;
-        this.collisionEntities[bodyCount++]=entity;
-      }
-      this.collisionBodies.length=bodyCount;this.collisionEntities.length=bodyCount;
-      const requested=travel;const result=resolveMotion(s,before,this.collisionBodies,requested);
+      const requested=travel;const result=resolveMotion(s,before,this.entities.map(e=>({kind:e.kind,x:e.lane*3.1,z:e.mesh.position.z,disabled:!e.mesh.visible||e.mesh.userData.hit===true})),requested);
       travel=result.travel;s.distance=before.distance+travel;s.score=before.score+travel*(s.maha&&s.blessing>0?4:2);
-      if(result.blocked>=0){const obstacle=this.collisionEntities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitFlickerTime=0;this.omLight.intensity=0;for(const entity of this.entities)if(entity.kind!=='modak'&&entity.mesh.position.z>-4&&entity.mesh.position.z<8)entity.mesh.visible=false;this.onNotice('');this.tone(105,.7);}else{this.hitFlickerTime=.34;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
+      if(result.blocked>=0){const obstacle=this.entities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitFlickerTime=0;for(const entity of this.entities)if(entity.kind!=='modak'&&entity.mesh.position.z>-4&&entity.mesh.position.z<8)entity.mesh.visible=false;this.onNotice('');this.tone(105,.7);}else{this.hitFlickerTime=.34;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
     }
-    if(was==='running'&&s.nextGate!==before.nextGate){const giftLane=((Math.floor(s.elapsed/60)+this.patternIndex)%3-1) as -1|0|1;this.add('om',giftLane,-72);this.notice('A sacred Om gift has appeared!');this.tone(784,.28);}
+    if(was==='running'&&s.nextGate!==before.nextGate){const giftLane=((Math.floor(s.elapsed/120)+this.patternIndex)%3-1) as -1|0|1;this.add('om',giftLane,-72);this.notice('A sacred Om gift has appeared!');this.tone(784,.28);}
     if(s.status==='running'){
       for(const c of this.chunks){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       for(const c of this.themeDecor){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       this.spawnIn-=travel;
       if(this.spawnIn<=0){const lane=Math.floor(Math.random()*3)-1;this.routeCount++;const routeEvery=s.distance>1200?4:s.distance>600?5:6,route=this.approved&&this.routeCount%routeEvery===0;this.spawnIn=route?Math.max(25,34-s.distance/300):obstacleSpacing(s.distance)+Math.random()*2.5;if(route)this.addRoute(lane,-147);else{const pattern=obstaclePattern(this.patternIndex++,s.distance);for(const item of pattern.obstacles)this.add(item.kind,item.lane,-147,0,item.appearance);for(let i=0;i<6;i++)this.add('modak',pattern.safeLane,-151-i*3.2);}}
-      let omGlow:T.Group|null=null;
       for(const e of this.entities){
         e.mesh.position.z+=travel;
         if(e.kind==='modak'){e.mesh.rotation.y+=dt;e.mesh.position.y=e.elevation+.85+Math.sin(this.time*3+e.mesh.position.z)*.12;}
-        if(e.kind==='om'){e.mesh.rotation.y+=dt*.9;e.mesh.position.y=e.elevation+.12+Math.sin(this.time*2.4)*.12;const pulse=1+Math.sin(this.time*4)*.06;e.mesh.scale.setScalar(pulse);if(e.mesh.visible)omGlow=e.mesh;}
+        if(e.kind==='om'){e.mesh.rotation.y+=dt*.9;e.mesh.position.y=e.elevation+.12+Math.sin(this.time*2.4)*.12;const pulse=1+Math.sin(this.time*4)*.06;e.mesh.scale.setScalar(pulse);}
         const dx=Math.abs(s.x-e.lane*3.1),dz=e.mesh.position.z-3;
         if(!e.checked&&dz>(e.kind==='modak'?-.65:e.kind==='cart'?2.75:e.kind==='rooftop'?5.9:1.2)){
           e.checked=true;
@@ -497,8 +450,7 @@ export default class FestivalWorld {
           }else if(dx<3.8&&s.elapsed-this.lastMoveTime<.65&&s.blessing<=0){this.celebrate('Near miss!');}
         }
       }
-      if(omGlow)this.omLight.position.set(omGlow.position.x,omGlow.position.y+1.2,omGlow.position.z);this.omLight.intensity=omGlow?7:0;
-      let kept=0;for(const e of this.entities){if(e.mesh.position.z>18){if(e.pool)e.pool.remove(e.mesh);else this.scene.remove(e.mesh);}else this.entities[kept++]=e;}this.entities.length=kept;
+      this.entities=this.entities.filter(e=>{if(e.mesh.position.z>18){this.scene.remove(e.mesh);return false;}return true;});
       this.beat+=dt;if(this.beat>1.1){this.beat=0;this.tone([196,246.94,293.66,392][Math.floor(s.elapsed)%4],.18);}
     }
     if(s.theme!==this.lastTheme){this.lastTheme=s.theme;const tones=[0x77769b,0x716f98,0x80759f,0x73709a,0x5e5e82];(this.scene.fog as T.Fog).color.setHex(tones[s.theme]);(this.scene.fog as T.Fog).near=s.theme===4?36:42;(this.scene.fog as T.Fog).far=s.theme===4?120:145;for(const c of this.themeDecor)for(const decoration of c.children)decoration.visible=decoration.userData.theme===s.theme;this.shrine.visible=true;if(s.distance>2)this.notice(['Temple Street','Market Street','Festival Avenue','Pandal Zone','Temple Corridor'][s.theme]);}
@@ -509,11 +461,11 @@ export default class FestivalWorld {
     this.runner.g.scale.y=1;this.runner.g.rotation.z=(s.lane*3.1-s.x)*-.08;
     if(s.status==='dying'){this.deathTime=Math.max(0,this.deathTime-dt);if(this.deathTime===0){s.status='over';this.onChange({...s});}}
     if(this.mixer&&s.status!=='paused'&&s.status!=='gate'&&s.status!=='over'){const airborne=s.jump>s.ground+.05;const motion=s.status==='dying'?'Death':introActive?'Intro':!running?'Idle':s.slide>0?'Slide':airborne?'Jump':'Run';if(motion!==this.motion){const previous=this.motion?this.mixer.clipAction(T.AnimationClip.findByName(this.clips,this.motion)):undefined;const clip=T.AnimationClip.findByName(this.clips,motion);if(clip){const action=this.mixer.clipAction(clip);action.enabled=true;action.setEffectiveWeight(1);action.setEffectiveTimeScale(1);if(motion==='Jump'||motion==='Slide'||motion==='Death'||motion==='Intro'){action.setLoop(T.LoopOnce,1);action.clampWhenFinished=true;}else{action.setLoop(T.LoopRepeat,Infinity);action.clampWhenFinished=false;}if(motion==='Slide')action.timeScale=clip.duration/.85;if(motion==='Intro')action.timeScale=Math.max(.55,clip.duration/1.45);action.reset().fadeIn(.16).play();previous?.fadeOut(.16);}this.motion=motion;}this.mixer.update(dt);}
-    if(!this.mixer){this.runner.feet.children.forEach((f,i)=>{f.position.z=running?Math.sin(phase+i*Math.PI)*.24:0;f.position.y=.15+(running?Math.max(0,Math.cos(phase+i*Math.PI))*.15:0);});
+    this.runner.feet.children.forEach((f,i)=>{f.position.z=running?Math.sin(phase+i*Math.PI)*.24:0;f.position.y=.15+(running?Math.max(0,Math.cos(phase+i*Math.PI))*.15:0);});
     this.runner.tail.rotation.y=Math.sin(this.time*6)*.15;
-    const p=this.runner.cape.geometry.attributes.position;for(let i=0;i<p.count;i++)p.setZ(i,Math.sin(p.getX(i)*6+this.time*10)*.045*(1-p.getY(i)));p.needsUpdate=true;}
+    const p=this.runner.cape.geometry.attributes.position;for(let i=0;i<p.count;i++)p.setZ(i,Math.sin(p.getX(i)*6+this.time*10)*.045*(1-p.getY(i)));p.needsUpdate=true;
     this.hitFlickerTime=Math.max(0,this.hitFlickerTime-dt);const flickerElapsed=.34-this.hitFlickerTime;this.runner.g.visible=this.hitFlickerTime<=0||flickerElapsed<.08||flickerElapsed>=.2;this.aura.visible=false;this.blessingHalo.visible=false;
-    const pos=this.starfield.geometry.attributes.position;if(running){for(let i=0;i<pos.count;i++){let z=pos.getZ(i)+travel*.7;if(z>12)z=-140;pos.setZ(i,z);pos.setY(i,(pos.getY(i)+dt*.15)%14);}pos.needsUpdate=true;}
+    const pos=this.starfield.geometry.attributes.position;if(running)for(let i=0;i<pos.count;i++){let z=pos.getZ(i)+travel*.7;if(z>12)z=-140;pos.setZ(i,z);pos.setY(i,(pos.getY(i)+dt*.15)%14);}pos.needsUpdate=true;
     (this.starfield.material as T.PointsMaterial).color.setHex(s.maha?0xff7f9a:0xffd078);(this.starfield.material as T.PointsMaterial).size=s.maha?.17:.075;
     if(s.maha&&running)for(let i=0;i<pos.count;i++)pos.setY(i,(pos.getY(i)-dt*2+14)%14);
     this.fireworks.forEach((f,i)=>{const phase=(this.time+i*1.7)%6/6;f.visible=s.theme!==4;f.scale.setScalar(.15+phase);(f.material as T.PointsMaterial).opacity=Math.sin(phase*Math.PI)*.8;});
@@ -521,15 +473,11 @@ export default class FestivalWorld {
     else if(introActive){const progress=1-this.introTime/1.45,eased=1-Math.pow(1-progress,3),portrait=this.camera.aspect<.8;this.camera.position.x=T.MathUtils.lerp(-2.8,0,eased);this.camera.position.y=T.MathUtils.lerp(portrait?4.4:2.75,portrait?4.9:3.45,eased);this.camera.position.z=T.MathUtils.lerp(portrait?12.0:8.4,portrait?12.6:10.1,eased);this.camera.lookAt(T.MathUtils.lerp(s.x,0,eased),1.35,-5);}
     else{this.camera.position.x+=(s.x*.14-this.camera.position.x)*dt*4;const targetHeight=(this.camera.aspect<.8?4.9:3.45)+s.ground*.78,targetZ=this.camera.aspect<.8?12.6:10.1;this.camera.position.y+=(targetHeight-this.camera.position.y)*Math.min(1,dt*6);this.camera.position.z+=(targetZ-this.camera.position.z)*Math.min(1,dt*6);this.camera.lookAt(this.camera.position.x*.35,1.4+s.ground*.68,-5);}
     if(this.noticeTime>0&&s.status!=='paused'){this.noticeTime-=dt;if(this.noticeTime<=0)this.onNotice('');}
-    this.camera.updateMatrixWorld();
-    this.projectionView.multiplyMatrices(this.camera.projectionMatrix,this.camera.matrixWorldInverse);
-    this.renderFrustum.setFromProjectionMatrix(this.projectionView);
-    for(const pool of this.instancePools.values())pool.sync(this.camera,this.renderFrustum,(this.scene.fog as T.Fog).far);
     this.composer.render();if(this.time-this.lastUiSync>=.08||s.status!==was){this.lastUiSync=this.time;this.onChange({...s});}
   }
   dispose(){this.disposed=true;cancelAnimationFrame(this.raf);this.observer.disconnect();window.removeEventListener('keydown',this.boundKey);document.removeEventListener('visibilitychange',this.boundVisibility);this.canvas.removeEventListener('pointerdown',this.pointerStart);this.canvas.removeEventListener('pointerup',this.pointerEnd);for(const sound of this.collectSounds){sound.pause();sound.removeAttribute('src');sound.load();}void this.audio?.close();
     this.composer.dispose();const geometries=new Set<T.BufferGeometry>(),mats=new Set<T.Material>(),textures=new Set<T.Texture>();
     const release=(o:T.Object3D)=>{if(o instanceof T.Mesh||o instanceof T.Points||o instanceof T.Sprite){geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){mats.add(m);for(const v of Object.values(m))if(v instanceof T.Texture)textures.add(v);}}};
-    this.scene.traverse(release);Object.values(this.templates).forEach(t=>t.traverse(release));if(this.scene.background instanceof T.Texture)textures.add(this.scene.background);if(this.scene.environment)textures.add(this.scene.environment);geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());materials.clear();streetMaterials.clear();panelMaterials.clear();for(const pool of this.instancePools.values())pool.dispose();this.instancePools.clear();this.renderer.dispose();
+    this.scene.traverse(release);Object.values(this.templates).forEach(t=>t.traverse(release));if(this.scene.background instanceof T.Texture)textures.add(this.scene.background);if(this.scene.environment)textures.add(this.scene.environment);geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());materials.clear();this.renderer.dispose();
   }
 }

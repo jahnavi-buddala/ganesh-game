@@ -4,16 +4,7 @@ import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 export async function loadApprovedModels() {
   const loader=new GLTFLoader();
   const fullNames=['modak','ganesha','festival-tram','temple-rooftop','roof-ramp','tribal-drum','marigold-market-cart','titanic-lamp','marigold-temple-gate','om-symbol','meshy-mushika-running'];
-  const deviceMemory=(navigator as Navigator&{deviceMemory?:number}).deviceMemory;
-  const cores=navigator.hardwareConcurrency||4;
-  const touchDevice=navigator.maxTouchPoints>0;
-  const requestedQuality=new URLSearchParams(location.search).get('quality');
-  // Chrome exposes deviceMemory in broad buckets. Four-gigabyte phones use
-  // the essential character, landmark and collectible models, while the
-  // existing procedural templates cover scenery and obstacles. Stronger
-  // devices retain every approved GLB at its original quality.
-  const lite=requestedQuality==='lite'||requestedQuality!=='full'&&(deviceMemory!==undefined?deviceMemory<=4:touchDevice&&cores<=4);
-  const names=lite?['modak','ganesha','om-symbol','meshy-mushika-running']:fullNames;
+  const names=fullNames;
   const path=(name:string)=>name==='ganesha'?'/assets/models/ganesha_3d.glb':name==='tribal-drum'?'/assets/models/festival_drum_on_wheels.glb':name==='marigold-market-cart'?'/assets/models/marigold_market_cart.glb':name==='titanic-lamp'?'/assets/models/titanic_lamp.glb':name==='marigold-temple-gate'?'/assets/models/marigold_temple_gate.glb':name==='om-symbol'?'/assets/models/om_symbol.glb':name==='meshy-mushika-running'?'/assets/models/meshy_mushika_running.glb':`/model-review-v1/models/${name}.glb`;
   const models:Record<string,GLTF>={};
   // Large festival models are intentionally loaded one at a time. Loading all

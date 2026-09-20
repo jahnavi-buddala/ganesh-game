@@ -31,7 +31,7 @@ Collect modaks for points. Avoid drums, carts, gates, and festival vehicles. Mus
 - Connected ramps, vehicle roofs, and elevated routes
 - Maha Aashirwad collectible and blessing effects
 - Public Supabase top-ten leaderboard
-- Responsive controls and adaptive graphics for lower-memory mobile devices
+- Responsive controls and shared model rendering for mobile devices
 
 ## Technology
 
@@ -41,9 +41,7 @@ Collect modaks for points. Avoid drums, carts, gates, and festival vehicles. Mus
 - Supabase leaderboard
 - Vercel deployment
 
-The renderer uses Three.js frustum culling for off-screen meshes, reuses shared geometry and materials, batches procedural scenery, adapts pixel density to frame time, pauses when the tab is hidden, and loads large models sequentially. Devices reporting 4 GB of memory or less load essential hero, Ganesha, modak, and Om models while using the game's lighter procedural scenery templates. Stronger devices retain the full approved asset set.
-
-For testing, append `?quality=lite` or `?quality=full` to the game URL to override automatic graphics selection.
+The renderer uses per-instance camera culling and shared GPU draws for repeated approved models, reuses street geometry, and limits collision checks to nearby obstacles. It stops rendering behind the opaque main menu and while paused. Original models, textures, bloom, and shadows are retained on every device; RAM detection no longer substitutes simplified assets or lowers resolution during a run. Large assets still load sequentially to limit temporary loading memory.
 
 ## Local development
 

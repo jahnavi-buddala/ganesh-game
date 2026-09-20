@@ -1,0 +1,12 @@
+<!doctype html><html><head><style>body{margin:0;background:#17131b;color:white;font:14px sans-serif}canvas{width:100vw;height:calc(100vh - 80px);display:block}button{padding:10px;margin:4px}#status{display:inline-block}</style></head><body><canvas id="game"></canvas><button id="start" disabled>Run 180-frame comparison</button><button id="slide">Slide</button><button id="jump">Jump</button><button id="restart">Restart</button><span id="status">Loading full models</span><script type="module">
+const before=new URLSearchParams(location.search).has('before');
+const {default:World}=await import(before?'/src/festival/world-perf-before.ts':'/src/festival/world.ts');
+const status=document.querySelector('#status'),start=document.querySelector('#start');
+const world=new World(document.querySelector('#game'),()=>{},()=>{});world.muted=true;world.clock.getDelta=()=>1/60;
+await world.assetsReady;start.disabled=false;status.textContent='Ready '+(before?'BEFORE':'AFTER');
+const rawRender=world.composer.render.bind(world.composer);let calls=[],triangles=[],times=[],last=0;
+world.renderer.info.autoReset=false;
+world.composer.render=()=>{world.renderer.info.reset();rawRender();if(last){times.push(performance.now()-last);calls.push(world.renderer.info.render.calls);triangles.push(world.renderer.info.render.triangles);}last=performance.now();if(times.length===180){world.pause();const avg=a=>Math.round(a.reduce((x,y)=>x+y,0)/a.length);const sorted=[...times].sort((a,b)=>a-b);status.textContent=JSON.stringify({mode:before?'before':'after',frames:times.length,frameMs:avg(times),p95:Math.round(sorted[170]),drawCalls:avg(calls),triangles:avg(triangles),geometries:world.renderer.info.memory.geometries,textures:world.renderer.info.memory.textures,pixelRatio:world.renderer.getPixelRatio()});}};
+start.onclick=()=>{world.start();world.state.invincible=1000;times=[];calls=[];triangles=[];last=0;status.textContent='Measuring';};
+document.querySelector('#slide').onclick=()=>{world.resume();world.action('slide');};document.querySelector('#jump').onclick=()=>{world.resume();world.action('jump');};document.querySelector('#restart').onclick=()=>{world.start();world.state.invincible=1000;};
+</script></body></html>

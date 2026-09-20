@@ -9,7 +9,8 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
-    "type-check": "vue-tsc --build --force"
+    "type-check": "vue-tsc --build --force",
+    "test:rendering": "node scripts/check-instances.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
