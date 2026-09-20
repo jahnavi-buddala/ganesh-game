@@ -17,6 +17,10 @@ const geo = {
   box:mergeVertices(new RoundedBoxGeometry(1,1,1,2,.035),1e-8), sphere:new T.SphereGeometry(1,24,18),
   cylinder:new T.CylinderGeometry(1,1,1,20), cone:new T.ConeGeometry(1,1,24),
   plane:new T.PlaneGeometry(1,1), torus:new T.TorusGeometry(1,.07,6,32),
+  // Light stand-ins that mesh() picks automatically for small decorations. At the
+  // on-screen size of garland beads, thin poles and slim trims these render the
+  // same pixels as the full-segment versions with a fraction of the triangles.
+  bead:new T.SphereGeometry(1,10,7), pole:new T.CylinderGeometry(1,1,1,10), slab:new T.BoxGeometry(1,1,1),
 };
 const materials = new Map<string,T.MeshStandardMaterial>();
 const streetMaterials = new Map<string,T.MeshStandardMaterial>();
@@ -27,6 +31,12 @@ function mat(color:number, glow=0) {
   return materials.get(key)!;
 }
 function mesh(parent:T.Object3D, kind:keyof typeof geo, color:number, pos:number[], scale:number[], glow=0) {
+  // A bead the size of a marigold or a pencil-thin pole never shows its segment
+  // count on screen; swapping in the light geometry is invisible but removes the
+  // bulk of the street's triangles for weak mobile GPUs.
+  if(kind==='sphere'&&Math.max(scale[0],scale[1],scale[2])<=.3)kind='bead';
+  else if(kind==='cylinder'&&Math.max(scale[0],scale[2])<=.1)kind='pole';
+  else if(kind==='box'&&Math.min(scale[0],scale[1],scale[2])<=.3)kind='slab';
   const m=new T.Mesh(geo[kind],mat(color,glow)); m.position.set(pos[0],pos[1],pos[2]);m.scale.set(scale[0],scale[1],scale[2]);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
 }
 function canvasTexture(w:number,h:number,draw:(ctx:CanvasRenderingContext2D)=>void) {
@@ -70,6 +80,7 @@ function batch(group:T.Group) {
   for(const [material,geometries] of byMaterial){const geometry=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());if(geometry){const m=new T.Mesh(geometry,material);m.castShadow=true;m.receiveShadow=true;result.add(m);}}
   return result;
 }
+function prepareModel(group:T.Group){return batch(group);}
 function modak() {
   const group=new T.Group();
   const points=[new T.Vector2(0,0),new T.Vector2(.3,.04),new T.Vector2(.45,.23),new T.Vector2(.4,.48),new T.Vector2(.22,.75),new T.Vector2(.07,.96),new T.Vector2(0,1.12)];
@@ -87,9 +98,8 @@ function omGift(){
   const ring=mesh(group,'torus',0xffc640,[0,0,0],[1.05,1.05,1.05],.8);ring.rotation.x=Math.PI/2;
   const outer=mesh(group,'torus',0xffe58c,[0,.04,0],[1.35,1.35,1.35],.6);outer.rotation.x=Math.PI/2;
   const beam=new T.Mesh(new T.CylinderGeometry(.14,.72,6,20,1,true),new T.MeshBasicMaterial({color:0xffcf55,transparent:true,opacity:.18,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide}));beam.position.y=2.2;group.add(beam);
-  // The pickup glow light lives permanently in the scene (see omLight). Cloning a
-  // light per pickup changes the scene light count, which forces every standard
-  // material shader to recompile mid-run - a long freeze on weak devices.
+  // The pickup glow light is added only while an Om gift is on screen. Adding it
+  // permanently would make every material pay for a second point light.
   return group;
 }
 function mouse() {
@@ -147,11 +157,11 @@ function obstacle(kind:Obstacle) {
 
 export default class FestivalWorld {
   state:RunState=freshState(); startTheme=0;
-  scene=new T.Scene();camera=new T.PerspectiveCamera(62,1,.1,210);renderer:T.WebGLRenderer;composer:EffectComposer;bloom:UnrealBloomPass;
+  scene=new T.Scene();camera=new T.PerspectiveCamera(62,1,.1,148);renderer:T.WebGLRenderer;composer:EffectComposer;bloom:UnrealBloomPass;
   runner=mouse();chunks:T.Group[]=[];entities:Entity[]=[];templates:{[key:string]:T.Group};
   clock=new T.Clock();raf=0;time=0;spawnIn=15;lastTheme=-1;starfield:T.Points;
   pixelRatio=Math.min(devicePixelRatio,navigator.maxTouchPoints>0?1.25:1.5);lastUiSync=0;renderRequested=true;
-  instancePools=new Map<string,ModelInstances>();renderFrustum=new T.Frustum();projectionView=new T.Matrix4();
+  instancePools=new Map<string,ModelInstances>();streetPools=new Map<number,ModelInstances>();themePools:ModelInstances[]=[];renderFrustum=new T.Frustum();projectionView=new T.Matrix4();
   collisionBodies:{kind:string;x:number;z:number;disabled:boolean}[]=[];collisionEntities:Entity[]=[];
   onChange:(s:RunState)=>void;onNotice:(message:string)=>void;
   currentNotice='';noticeTime=0;disposed=false; observer:ResizeObserver;
@@ -179,7 +189,6 @@ export default class FestivalWorld {
     const sun=new T.DirectionalLight(0xff9d4d,2.85);sun.position.set(-15,22,12);sun.castShadow=true;
     sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-20,right:20,top:25,bottom:-25,far:100});sun.shadow.bias=-.0008;this.scene.add(sun);
     const fill=new T.DirectionalLight(0x829ee8,.72);fill.position.set(8,11,-12);this.scene.add(fill);
-    this.scene.add(this.omLight);
     this.camera.position.set(0,3.45,10.1);this.camera.lookAt(0,1.4,-5);
     const roadTexture=canvasTexture(512,512,c=>{
       c.fillStyle='#342c33';c.fillRect(0,0,512,512);
@@ -198,7 +207,16 @@ export default class FestivalWorld {
     const glow=canvasTexture(64,64,c=>{const gradient=c.createRadialGradient(32,32,0,32,32,32);gradient.addColorStop(0,'#fff6dfff');gradient.addColorStop(.12,'#ffd66c99');gradient.addColorStop(.45,'#ff981b33');gradient.addColorStop(1,'#ff981b00');c.fillStyle=gradient;c.fillRect(0,0,64,64);});
     const glowMat=new T.SpriteMaterial({map:glow,transparent:true,depthWrite:false,blending:T.AdditiveBlending,opacity:.58});
     const streetTemplates=new Map<number,T.Group>();
-    for(let i=0;i<10;i++){const variant=[0,1,2,0,3,1][i%6];if(!streetTemplates.has(variant))streetTemplates.set(variant,batch(this.makeChunk(roadMat,windowTex,signTex,variant)));const c=streetTemplates.get(variant)!.clone();c.position.z=12-i*18;for(const side of [-1,1])for(const z of [-6,3]){const light=new T.Sprite(glowMat);light.position.set(side*6.2,3.7,z);light.scale.setScalar(2.6);c.add(light);}this.scene.add(c);this.chunks.push(c);}
+    for(let i=0;i<10;i++){
+      const variant=[0,1,2,0,3,1][i%6];
+      if(!this.streetPools.has(variant)){
+        if(!streetTemplates.has(variant))streetTemplates.set(variant,batch(this.makeChunk(roadMat,windowTex,signTex,variant)));
+        this.streetPools.set(variant,new ModelInstances(this.scene,streetTemplates.get(variant)!));
+      }
+      const c=this.streetPools.get(variant)!.create();c.position.z=12-i*18;
+      for(const side of [-1,1])for(const z of [-6,3]){const light=new T.Sprite(glowMat);light.position.set(side*6.2,3.7,z);light.scale.setScalar(2.6);c.add(light);}
+      this.scene.add(c);this.chunks.push(c);
+    }
     this.makeThemeDecor();
     this.shrine=this.makeShrine();this.scene.add(this.shrine);
     this.runner.g.position.z=3;this.scene.add(this.runner.g);
@@ -230,6 +248,7 @@ export default class FestivalWorld {
     this.pointerEnd=e=>{if(!this.pointer)return;const dx=e.clientX-this.pointer.x,dy=e.clientY-this.pointer.y;this.pointer=null;if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;this.action(Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy<0?'jump':'slide');};
     canvas.addEventListener('pointerdown',this.pointerStart);canvas.addEventListener('pointerup',this.pointerEnd);
     this.seed();this.assetsReady=this.installApproved();this.animate();
+    if(import.meta.env.DEV)(window as unknown as {__world?:FestivalWorld}).__world=this;
   }
   async installApproved(){
     const fbx=new FBXLoader();
@@ -272,7 +291,7 @@ export default class FestivalWorld {
     const omPickup=omGift(),omModel=normalized('om-symbol',[1.9,2.35,.85]);if(omModel){const fallback=omPickup.children.find(child=>child.userData.fallback);if(fallback)omPickup.remove(fallback);omModel.position.y=.12;omPickup.add(omModel);}this.templates.om=omPickup;
     // The supplied lantern-path mesh contains broad baked white bands and large
     // yellow markers. Keep the asset available, but use the clearer stone road.
-    for(const key of ['modak','lamp','drum','marketCart','barrier','cart','ramp','rooftop']){const template=this.templates[key];if(template)this.instancePools.set(key,new ModelInstances(this.scene,template));}
+    for(const key of ['modak','lamp','drum','marketCart','barrier','cart','ramp','rooftop']){const template=this.templates[key];if(template){const prepared=prepareModel(template);this.templates[key]=prepared;this.instancePools.set(key,new ModelInstances(this.scene,prepared));}}
     if(lamp)for(const chunk of this.chunks)for(const side of [-1,1])for(const z of [0]){const lampClone=this.instancePools.get('lamp')!.create();lampClone.position.set(side*6.2,.12,z);lampClone.rotation.y=side<0?Math.PI:0;chunk.add(lampClone);}
     const deityAsset=models.ganesha;if(deityAsset){this.shrine.clear();this.shrine.position.z=-86;const deity=deityAsset.scene;deity.rotation.y=-Math.PI/2;
     deity.updateMatrixWorld(true);const deityBounds=new T.Box3().setFromObject(deity),deitySize=deityBounds.getSize(new T.Vector3()),deityCenter=deityBounds.getCenter(new T.Vector3());
@@ -288,6 +307,13 @@ export default class FestivalWorld {
       mesh(this.shrine,'sphere',palette.gold,[side*10,22,-1],[.35,.7,.35]);
     }
     deity.traverse(o=>{if(o instanceof T.Mesh){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)m.fog=false;}});}
+    for(const source of [slideSource,jumpSource,deathSource])source?.traverse(object=>{if(object instanceof T.Mesh)object.geometry.dispose();});
+    this.scene.add(this.omLight);this.omLight.intensity=7;this.renderer.compile(this.scene,this.camera);this.omLight.removeFromParent();this.omLight.intensity=0;
+    // Push every model texture to the GPU now, behind the loading screen. Lazy
+    // uploads of 2048x2048 maps used to cause a visible hitch the first time each
+    // obstacle type appeared mid-run on slower phones.
+    const uploaded=new Set<T.Texture>();
+    for(const model of Object.values(models))model.scene.traverse(o=>{if(o instanceof T.Mesh)for(const material of Array.isArray(o.material)?o.material:[o.material])for(const value of Object.values(material))if(value instanceof T.Texture&&!uploaded.has(value)){uploaded.add(value);this.renderer.initTexture(value);}});
     this.approved=true;this.seed();
   }
   makeChunk(roadMat:T.Material,windowTex:T.Texture,signs:T.Texture[],variant=0) {
@@ -365,7 +391,6 @@ export default class FestivalWorld {
     return g;
   }
   makeThemeDecor() {
-    const root=new T.Group();
     for(let theme=0;theme<5;theme++){
       const g=new T.Group();
       if(theme===0){
@@ -397,9 +422,14 @@ export default class FestivalWorld {
         }
         const arc=new T.Mesh(new T.TorusGeometry(6.6,.4,8,48,Math.PI),mat(0xd2a674));arc.position.set(0,4,-6);g.add(arc);
       }
-      const optimized=batch(g);optimized.userData.theme=theme;root.add(optimized);
+      const optimized=batch(g);this.themePools.push(new ModelInstances(this.scene,optimized));
     }
-    for(let i=0;i<10;i++){const c=root.clone();c.position.z=12-i*18;this.scene.add(c);this.themeDecor.push(c);}
+    for(let i=0;i<10;i++){
+      const row=new T.Group();row.position.z=12-i*18;this.scene.add(row);this.themeDecor.push(row);
+      for(let theme=0;theme<this.themePools.length;theme++){
+        const handle=this.themePools[theme].create();handle.userData.theme=theme;handle.visible=false;row.add(handle);
+      }
+    }
   }
   makeShrine() {
     const g=new T.Group();g.position.set(0,0,-86);
@@ -426,7 +456,7 @@ export default class FestivalWorld {
     mesh(deity,'torus',palette.gold,[0,3,.1],[2.9,3.2,1],.5);
     return g;
   }
-  seed(){for(const e of this.entities){if(e.pool)e.pool.remove(e.mesh);else this.scene.remove(e.mesh);}this.entities=[];this.omLight.intensity=0;this.routeCount=0;for(const lane of [-1,0,1])for(let z=-10-lane*2;z>-34;z-=7)this.add('modak',lane,z);this.add('drum',-1,-42);this.add('barrier',0,-54);this.add('drum',1,-66,0,'marketCart');this.add('cart',0,-80);}
+  seed(){for(const e of this.entities){if(e.pool)e.pool.remove(e.mesh);else this.scene.remove(e.mesh);}this.entities=[];this.omLight.intensity=0;this.omLight.removeFromParent();this.routeCount=0;for(const lane of [-1,0,1])for(let z=-10-lane*2;z>-34;z-=7)this.add('modak',lane,z);this.add('drum',-1,-42);this.add('barrier',0,-54);this.add('drum',1,-66,0,'marketCart');this.add('cart',0,-80);}
   addRoute(lane:number,z:number){this.add('ramp',lane,z);this.add('cart',lane,z-4.1);this.add('rooftop',lane,z-11.9);for(let i=0;i<6;i++)this.add('modak',lane,z-3-i*2.4,2.67);}
   add(kind:Entity['kind'],lane:number,z:number,elevation=0,appearance?:string){const selected=this.templates[appearance||kind]||this.templates[kind];if(!selected)return;const pool=this.instancePools.get(appearance||kind),mesh=pool?pool.create():selected.clone();mesh.position.set(lane*3.1,kind==='modak'?.75+elevation:kind==='om'?elevation:0,z);mesh.userData.appearance=selected===this.templates[appearance||kind]?(appearance||kind):kind;this.scene.add(mesh);this.entities.push({mesh,lane,kind,checked:false,elevation,pool});}
   resetRunnerPose(intro:boolean){this.runner.g.position.set(0,0,3);this.runner.g.rotation.set(0,0,0);this.runner.g.scale.set(1,1,1);this.runner.g.visible=true;this.runnerShadow.position.set(0,.025,3);this.runnerShadow.scale.setScalar(1);this.blessingGroundAura.visible=false;this.blessingVisual=0;this.mixer?.stopAllAction();this.motion='';if(intro&&this.mixer){const clip=T.AnimationClip.findByName(this.clips,'Intro');if(clip){const action=this.mixer.clipAction(clip);action.reset().setLoop(T.LoopOnce,1);action.clampWhenFinished=true;action.play();this.motion='Intro';this.mixer.update(0);}}}
@@ -470,7 +500,7 @@ export default class FestivalWorld {
       this.collisionBodies.length=bodyCount;this.collisionEntities.length=bodyCount;
       const requested=travel;const result=resolveMotion(s,before,this.collisionBodies,requested);
       travel=result.travel;s.distance=before.distance+travel;s.score=before.score+travel*(s.maha&&s.blessing>0?4:2);
-      if(result.blocked>=0){const obstacle=this.collisionEntities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitFlickerTime=0;this.omLight.intensity=0;for(const entity of this.entities)if(entity.kind!=='modak'&&entity.mesh.position.z>-4&&entity.mesh.position.z<8)entity.mesh.visible=false;this.onNotice('');this.tone(105,.7);}else{this.hitFlickerTime=.34;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
+      if(result.blocked>=0){const obstacle=this.collisionEntities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitFlickerTime=0;this.omLight.intensity=0;this.omLight.removeFromParent();for(const entity of this.entities)if(entity.kind!=='modak'&&entity.mesh.position.z>-4&&entity.mesh.position.z<8)entity.mesh.visible=false;this.onNotice('');this.tone(105,.7);}else{this.hitFlickerTime=.34;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
     }
     if(was==='running'&&s.nextGate!==before.nextGate){const giftLane=((Math.floor(s.elapsed/60)+this.patternIndex)%3-1) as -1|0|1;this.add('om',giftLane,-72);this.notice('A sacred Om gift has appeared!');this.tone(784,.28);}
     if(s.status==='running'){
@@ -497,11 +527,11 @@ export default class FestivalWorld {
           }else if(dx<3.8&&s.elapsed-this.lastMoveTime<.65&&s.blessing<=0){this.celebrate('Near miss!');}
         }
       }
-      if(omGlow)this.omLight.position.set(omGlow.position.x,omGlow.position.y+1.2,omGlow.position.z);this.omLight.intensity=omGlow?7:0;
+      if(omGlow){if(!this.omLight.parent)this.scene.add(this.omLight);this.omLight.position.set(omGlow.position.x,omGlow.position.y+1.2,omGlow.position.z);this.omLight.intensity=7;}else{this.omLight.intensity=0;this.omLight.removeFromParent();}
       let kept=0;for(const e of this.entities){if(e.mesh.position.z>18){if(e.pool)e.pool.remove(e.mesh);else this.scene.remove(e.mesh);}else this.entities[kept++]=e;}this.entities.length=kept;
       this.beat+=dt;if(this.beat>1.1){this.beat=0;this.tone([196,246.94,293.66,392][Math.floor(s.elapsed)%4],.18);}
     }
-    if(s.theme!==this.lastTheme){this.lastTheme=s.theme;const tones=[0x77769b,0x716f98,0x80759f,0x73709a,0x5e5e82];(this.scene.fog as T.Fog).color.setHex(tones[s.theme]);(this.scene.fog as T.Fog).near=s.theme===4?36:42;(this.scene.fog as T.Fog).far=s.theme===4?120:145;for(const c of this.themeDecor)for(const decoration of c.children)decoration.visible=decoration.userData.theme===s.theme;this.shrine.visible=true;if(s.distance>2)this.notice(['Temple Street','Market Street','Festival Avenue','Pandal Zone','Temple Corridor'][s.theme]);}
+    if(s.theme!==this.lastTheme){this.lastTheme=s.theme;const tones=[0x77769b,0x716f98,0x80759f,0x73709a,0x5e5e82];const fog=this.scene.fog as T.Fog;fog.color.setHex(tones[s.theme]);fog.near=s.theme===4?36:42;fog.far=s.theme===4?120:145;this.camera.far=fog.far;this.camera.updateProjectionMatrix();for(const c of this.themeDecor)for(const decoration of c.children)decoration.visible=decoration.userData.theme===s.theme;this.shrine.visible=true;if(s.distance>2)this.notice(['Temple Street','Market Street','Festival Avenue','Pandal Zone','Temple Corridor'][s.theme]);}
     const running=s.status==='running', phase=this.time*(s.blessing>0?22:17);
     this.runner.g.position.x=s.x;this.runner.g.position.y=s.jump+(s.ground>0?.14:0)+(running?Math.abs(Math.sin(phase))*.07:Math.sin(this.time*2)*.025);
     this.runnerShadow.position.set(s.x,s.ground+.025,3);this.runnerShadow.scale.setScalar(1+Math.max(0,s.jump-s.ground)*.12);(this.runnerShadow.material as T.MeshBasicMaterial).opacity=.8/(1+Math.max(0,s.jump-s.ground)*.7);
@@ -524,12 +554,17 @@ export default class FestivalWorld {
     this.camera.updateMatrixWorld();
     this.projectionView.multiplyMatrices(this.camera.projectionMatrix,this.camera.matrixWorldInverse);
     this.renderFrustum.setFromProjectionMatrix(this.projectionView);
-    for(const pool of this.instancePools.values())pool.sync(this.camera,this.renderFrustum,(this.scene.fog as T.Fog).far);
+    const fogFar=(this.scene.fog as T.Fog).far;
+    for(const chunk of this.chunks)chunk.visible=chunk.position.z<28&&chunk.position.z>-fogFar-18;
+    for(const row of this.themeDecor)row.visible=row.position.z<28&&row.position.z>-fogFar-18;
+    for(const pool of this.streetPools.values())pool.sync(this.camera,this.renderFrustum,fogFar);
+    for(const pool of this.themePools)pool.sync(this.camera,this.renderFrustum,fogFar);
+    for(const pool of this.instancePools.values())pool.sync(this.camera,this.renderFrustum,fogFar);
     this.composer.render();if(this.time-this.lastUiSync>=.08||s.status!==was){this.lastUiSync=this.time;this.onChange({...s});}
   }
   dispose(){this.disposed=true;cancelAnimationFrame(this.raf);this.observer.disconnect();window.removeEventListener('keydown',this.boundKey);document.removeEventListener('visibilitychange',this.boundVisibility);this.canvas.removeEventListener('pointerdown',this.pointerStart);this.canvas.removeEventListener('pointerup',this.pointerEnd);for(const sound of this.collectSounds){sound.pause();sound.removeAttribute('src');sound.load();}void this.audio?.close();
     this.composer.dispose();const geometries=new Set<T.BufferGeometry>(),mats=new Set<T.Material>(),textures=new Set<T.Texture>();
     const release=(o:T.Object3D)=>{if(o instanceof T.Mesh||o instanceof T.Points||o instanceof T.Sprite){geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){mats.add(m);for(const v of Object.values(m))if(v instanceof T.Texture)textures.add(v);}}};
-    this.scene.traverse(release);Object.values(this.templates).forEach(t=>t.traverse(release));if(this.scene.background instanceof T.Texture)textures.add(this.scene.background);if(this.scene.environment)textures.add(this.scene.environment);geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());materials.clear();streetMaterials.clear();panelMaterials.clear();for(const pool of this.instancePools.values())pool.dispose();this.instancePools.clear();this.renderer.dispose();
+    this.scene.traverse(release);Object.values(this.templates).forEach(t=>t.traverse(release));if(this.scene.background instanceof T.Texture)textures.add(this.scene.background);if(this.scene.environment)textures.add(this.scene.environment);geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());materials.clear();streetMaterials.clear();panelMaterials.clear();for(const pool of this.instancePools.values())pool.dispose();this.instancePools.clear();for(const pool of this.streetPools.values())pool.dispose();this.streetPools.clear();for(const pool of this.themePools)pool.dispose();this.themePools.length=0;this.renderer.dispose();
   }
 }

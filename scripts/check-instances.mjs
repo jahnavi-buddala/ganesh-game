@@ -48,3 +48,29 @@ const panel=merged.children.find(m=>m.material.map);assert.equal(panel.material.
 assert.deepEqual([...panel.geometry.toNonIndexed().attributes.uv.array],[...mapped.geometry.toNonIndexed().attributes.uv.array]);
 assert.ok(solid.geometry.attributes.position.count<expanded.attributes.position.count);
 console.log('PASS merged streets retain linear colors, lighting, every triangle and mapped UVs');
+
+// Ten repeating street rows must be one instanced draw of the merged mesh, not
+// ten cloned copies. 4GB GPUs pay for every extra draw of those buildings.
+const streetPool=new ModelInstances(scene,merged);
+const rows=[];for(let i=0;i<10;i++){const row=streetPool.create();row.position.z=-8-i*12;scene.add(row);rows.push(row);}
+streetPool.sync(camera,frustum,200);
+assert.equal(streetPool.parts.length,merged.children.length);
+assert.ok(streetPool.parts.every(part=>part.mesh.count===10));
+rows[0].visible=false;rows[9].position.z=40;streetPool.sync(camera,frustum,100);
+assert.ok(streetPool.parts.every(part=>part.mesh.count===8));
+console.log('PASS ten street rows share original merged draws and cull recycled copies');
+streetPool.dispose();
+
+assert.ok(worldSource.includes('streetPools'),'street rows must use instance pools');
+assert.equal(worldSource.includes('streetTemplates.get(variant)!.clone()'),false,'street rows must not clone merged buildings');
+assert.ok(worldSource.includes('themePools'),'theme decorations must use instance pools');
+assert.equal(/\broot\.clone\(\)/.test(worldSource),false,'theme rows must not clone every theme into the scene');
+assert.ok(worldSource.includes('prepareModel('),'approved models must merge submeshes before instancing');
+assert.ok(!/this\.scene\.add\(this\.omLight\)/.test(worldSource.split('installApproved')[0]),'idle Om light must stay out of the scene so unused point lighting is not paid every frame');
+console.log('PASS 4GB path instances streets/themes, merges model draws, and keeps the idle Om light off the light list');
+
+const approvedSource=readFileSync('src/festival/approved.ts','utf8');
+assert.ok(approvedSource.includes("const names=fullNames"),'every approved model stays loaded');
+assert.ok(approvedSource.includes('fitTextureSize'),'oversized maps must be fitted to the screen before they reach a 4GB heap');
+assert.match(approvedSource,/<=4\?1024/);
+console.log('PASS approved models stay complete while fitting oversized textures on 4GB devices');
