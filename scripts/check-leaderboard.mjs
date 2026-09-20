@@ -5,7 +5,7 @@ const source=readFileSync(new URL('../src/leaderboard.ts',import.meta.url),'utf8
 const {outputText}=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}});
 const {submitLeaderboardScore,uniqueTopScores}=await import('data:text/javascript;base64,'+Buffer.from(outputText).toString('base64'));
 
-function mockDb(rows){
+function mockDb(rows, {denyDelete=false}={}){
   const calls=[];
   const db={
     from(table){
@@ -15,6 +15,7 @@ function mockDb(rows){
           return {
             async ilike(column,pattern){
               calls.push({op:'delete',column,pattern});
+              if(denyDelete)return {error:{message:'permission denied for table leaderboard'}};
               const rx=new RegExp('^'+pattern.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'$','i');
               for(let i=rows.length-1;i>=0;i--)if(rx.test(rows[i].player_name))rows.splice(i,1);
               return {error:null};
@@ -23,8 +24,20 @@ function mockDb(rows){
         },
         async insert(row){
           calls.push({op:'insert',row});
+          if(rows.some(r=>r.player_name.toLowerCase()===row.player_name.toLowerCase()))return {error:{code:'23505',message:'duplicate'}};
           rows.push({player_name:row.player_name,score:row.score,created_at:'now'});
           return {error:null};
+        },
+        update(row){
+          return {
+            async ilike(column,pattern){
+              calls.push({op:'update',column,pattern,row});
+              const rx=new RegExp('^'+pattern.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'$','i');
+              let count=0;
+              for(const item of rows)if(rx.test(item.player_name)){item.score=row.score;count++;}
+              return {error:null,data:count?[{}]:[]};
+            },
+          };
         },
       };
     },
@@ -46,6 +59,12 @@ assert.equal(again.rows.length,1);
 assert.equal(again.rows[0].player_name,'ram');
 assert.equal(again.rows[0].score,450);
 console.log('PASS a second submit with the same name replaces every previous row');
+
+const blocked=mockDb([{player_name:'Mira',score:10,created_at:'old'}],{denyDelete:true});
+assert.equal(await submitLeaderboardScore('Mira', 99, blocked.db),'Mira');
+assert.equal(blocked.rows.length,1);
+assert.equal(blocked.rows[0].score,99);
+console.log('PASS submit still saves when delete is not allowed');
 
 const board=uniqueTopScores([
   {player_name:'Asha',score:900,created_at:'1'},
