@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "node scripts/check-rules.mjs",
+    "test": "node scripts/check-rules.mjs && node scripts/check-leaderboard.mjs",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
