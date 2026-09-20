@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {loadModelWithRetry,RequiredModelError} from './model-loading';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MeshoptSimplifier } from 'meshoptimizer';
@@ -64,11 +65,13 @@ export async function loadApprovedModels() {
   // of their compressed buffers and 4K textures together can exhaust a mobile
   // browser's temporary memory even when each individual model is valid.
   for(const name of names){
-    for(let attempt=0;attempt<2;attempt++){
-      try{models[name]=await loader.loadAsync(path(name));await trimExcessTriangles(models[name]);break;}
-      catch(error){if(attempt===1)console.warn(`Using the fallback for ${name}.`,error);}
+    try{models[name]=await loadModelWithRetry(url=>loader.loadAsync(url),path(name));await trimExcessTriangles(models[name]);}
+    catch(error){
+      console.warn('Detailed model unavailable: '+name,error);
+      if(name==='ganesha')throw new RequiredModelError('Ganesha could not be downloaded. Check your connection, then tap Retry loading.');
     }
   }
+
   const materials=new Map<T.Material,T.MeshStandardMaterial>();
   const realtime=(source:T.Material)=>{
     if(materials.has(source))return materials.get(source)!;

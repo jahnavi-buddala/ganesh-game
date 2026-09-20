@@ -1,0 +1,11 @@
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import ts from 'typescript';
+const code=ts.transpileModule(readFileSync('src/festival/model-loading.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const {loadModelWithRetry}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const urls=[],model={scene:true};
+assert.equal(await loadModelWithRetry(async url=>{urls.push(url);if(urls.length<3)throw Error('cached failure');return model;},'/ganesha.glb'),model);
+assert.equal(new Set(urls).size,3);assert.ok(urls.every(url=>url.includes('?v=')));
+let failures=0;await assert.rejects(loadModelWithRetry(async()=>{failures++;throw Error('offline');},'/ganesha.glb'),/offline/);assert.equal(failures,3);
+let calls=0;await loadModelWithRetry(async()=>{calls++;return model;},'/ganesha.glb');assert.equal(calls,1);
+console.log('PASS fresh-URL recovery, bounded failure, and no redundant successful download');
