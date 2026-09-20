@@ -41,7 +41,6 @@ export class ModelInstances {
         part.mesh=mesh;this.scene.add(mesh);
       }
     }
-    const castsShadow=this.parts.some(part=>part.mesh.castShadow);
     let count=0;
     for(const handle of this.handles){
       let visible=true;
@@ -49,8 +48,10 @@ export class ModelInstances {
       if(!visible)continue;
       handle.updateWorldMatrix(true,false);
       this.sphere.copy(this.bounds).applyMatrix4(handle.matrixWorld);
-      // These pools contain non-shadow-casting GLBs. Preserve offscreen casters if used elsewhere.
-      if(!castsShadow&&!frustum.intersectsSphere(this.sphere))continue;
+      // Off-camera rows cannot light the road from this sun angle, so skip them
+      // even when they cast shadows. Redmi 12 5G / Oppo A38 were transforming
+      // all ten building rows every frame because casters used to bypass this.
+      if(!frustum.intersectsSphere(this.sphere))continue;
       this.viewCenter.copy(this.sphere.center).applyMatrix4(camera.matrixWorldInverse);
       if(this.fogged&&-this.viewCenter.z-this.sphere.radius>=fogFar)continue;
       for(const part of this.parts){this.matrix.multiplyMatrices(handle.matrixWorld,part.local);part.mesh.setMatrixAt(count,this.matrix);}

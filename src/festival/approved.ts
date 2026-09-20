@@ -7,13 +7,17 @@ function deviceMemory(){
   return (navigator as Navigator&{deviceMemory?:number}).deviceMemory;
 }
 
+export function isLowMemoryDevice(){
+  const memory=deviceMemory();
+  return memory!==undefined&&memory<=4;
+}
+
 // 4GB Chrome buckets report 4. Those phones cannot hold 2K–4K albedos from the
 // supplied scans in GPU memory at the same time as the street. Gameplay never
 // shows a model larger than ~300px, so fitting maps to 1024 does not change
 // the pixels on screen - it only stops the tab from swapping.
 export function textureSizeLimit(){
-  const memory=deviceMemory();
-  return memory!==undefined&&memory<=4?1024:4096;
+  return isLowMemoryDevice()?1024:4096;
 }
 
 export function fitTextureSize(texture:T.Texture,maxSize=textureSizeLimit()){

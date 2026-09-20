@@ -56,10 +56,20 @@ const rows=[];for(let i=0;i<10;i++){const row=streetPool.create();row.position.z
 streetPool.sync(camera,frustum,200);
 assert.equal(streetPool.parts.length,merged.children.length);
 assert.ok(streetPool.parts.every(part=>part.mesh.count===10));
-rows[0].visible=false;rows[9].position.z=40;streetPool.sync(camera,frustum,100);
+rows[0].visible=false;rows[9].position.z=40;streetPool.sync(camera,frustum,200);
 assert.ok(streetPool.parts.every(part=>part.mesh.count===8));
 console.log('PASS ten street rows share original merged draws and cull recycled copies');
 streetPool.dispose();
+
+const casterTemplate=new T.Group(),casterMesh=new T.Mesh(new T.BoxGeometry(),new T.MeshStandardMaterial());
+casterMesh.castShadow=true;casterTemplate.add(casterMesh);
+const casterPool=new ModelInstances(scene,casterTemplate);
+const behind=casterPool.create();behind.position.z=12;scene.add(behind);casterPool.sync(camera,frustum,200);
+assert.equal(casterPool.parts[0].mesh.count,0,'buildings behind the camera must not be transformed just because they cast shadows');
+const ahead=casterPool.create();ahead.position.z=-12;scene.add(ahead);casterPool.sync(camera,frustum,200);
+assert.equal(casterPool.parts[0].mesh.count,1);
+console.log('PASS shadow-casting street rows still frustum cull');
+casterPool.dispose();
 
 assert.ok(worldSource.includes('streetPools'),'street rows must use instance pools');
 assert.equal(worldSource.includes('streetTemplates.get(variant)!.clone()'),false,'street rows must not clone merged buildings');
@@ -67,10 +77,14 @@ assert.ok(worldSource.includes('themePools'),'theme decorations must use instanc
 assert.equal(/\broot\.clone\(\)/.test(worldSource),false,'theme rows must not clone every theme into the scene');
 assert.ok(worldSource.includes('prepareModel('),'approved models must merge submeshes before instancing');
 assert.ok(!/this\.scene\.add\(this\.omLight\)/.test(worldSource.split('installApproved')[0]),'idle Om light must stay out of the scene so unused point lighting is not paid every frame');
+assert.ok(worldSource.includes('alpha:false'),'opaque canvas avoids extra Android compositor work over the HUD');
+assert.ok(worldSource.includes('PCFShadowMap'),'4GB Adreno/Mali phones must not run 9-tap soft shadows');
 console.log('PASS 4GB path instances streets/themes, merges model draws, and keeps the idle Om light off the light list');
 
 const approvedSource=readFileSync('src/festival/approved.ts','utf8');
 assert.ok(approvedSource.includes("const names=fullNames"),'every approved model stays loaded');
 assert.ok(approvedSource.includes('fitTextureSize'),'oversized maps must be fitted to the screen before they reach a 4GB heap');
-assert.match(approvedSource,/<=4\?1024/);
+assert.ok(approvedSource.includes('isLowMemoryDevice'));
+assert.match(approvedSource,/memory<=4/);
+assert.match(approvedSource,/\?1024:4096/);
 console.log('PASS approved models stay complete while fitting oversized textures on 4GB devices');

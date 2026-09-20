@@ -5,7 +5,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { loadApprovedModels } from './approved';
+import { isLowMemoryDevice, loadApprovedModels } from './approved';
 import { ModelInstances } from './instances';
 import { resolveMotion } from './rules';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -177,12 +177,12 @@ export default class FestivalWorld {
     // All output goes through the EffectComposer, which renders into plain
     // (non-multisampled) targets, so browser MSAA never reaches the scene.
     // Requesting it only adds a large hidden framebuffer + a resolve every frame.
-    this.renderer=new T.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
+    this.renderer=new T.WebGLRenderer({canvas,antialias:false,alpha:false,stencil:false,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(this.pixelRatio);this.renderer.outputColorSpace=T.SRGBColorSpace;
     this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.3;
     this.composer=new EffectComposer(this.renderer);this.composer.addPass(new RenderPass(this.scene,this.camera));this.bloom=new UnrealBloomPass(new T.Vector2(1,1),.38,.3,.92);this.composer.addPass(this.bloom);
     const studio=new RoomEnvironment();const pmrem=new T.PMREMGenerator(this.renderer);this.scene.environment=pmrem.fromScene(studio,.04).texture;studio.dispose();pmrem.dispose();
-    this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=isLowMemoryDevice()?T.PCFShadowMap:T.PCFSoftShadowMap;
     this.scene.fog=new T.Fog(0x77759a,40,145);
     this.scene.background=canvasTexture(8,512,c=>{const grd=c.createLinearGradient(0,0,0,512);grd.addColorStop(0,'#29476f');grd.addColorStop(.42,'#86658c');grd.addColorStop(.72,'#f2a06d');grd.addColorStop(1,'#ffd39a');c.fillStyle=grd;c.fillRect(0,0,8,512);});
     const ambient=new T.HemisphereLight(0x8ea8d8,0x6b3c32,.92);this.scene.add(ambient);
@@ -196,7 +196,7 @@ export default class FestivalWorld {
         const n=(x*7+y*11+20)%9;c.fillStyle=`hsl(${285+n*.35},${10+n*.4}%,${20+n*.55}%)`;const px=x*128+(y%2)*64;
         c.fillRect(px+3,y*64+3,122,58);c.fillStyle='#d79d6740';c.fillRect(px+5,y*64+3,117,2);
       }
-    });roadTexture.wrapS=roadTexture.wrapT=T.RepeatWrapping;roadTexture.repeat.set(2,4);roadTexture.anisotropy=this.renderer.capabilities.getMaxAnisotropy();
+    });roadTexture.wrapS=roadTexture.wrapT=T.RepeatWrapping;roadTexture.repeat.set(2,4);roadTexture.anisotropy=Math.min(4,this.renderer.capabilities.getMaxAnisotropy());
     const roadMat=new T.MeshStandardMaterial({map:roadTexture,roughness:.62,bumpMap:roadTexture,bumpScale:.055,color:0xa78988,envMapIntensity:.72});
     const windowTex=canvasTexture(128,256,c=>{
       c.fillStyle='#794a42';c.fillRect(0,0,128,256);c.beginPath();c.moveTo(18,245);c.lineTo(18,90);c.quadraticCurveTo(18,35,64,14);c.quadraticCurveTo(110,35,110,90);c.lineTo(110,245);c.closePath();c.fillStyle='#f8bd67';c.fill();c.strokeStyle='#ddb376';c.lineWidth=9;c.stroke();
