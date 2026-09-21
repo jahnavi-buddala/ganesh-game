@@ -1,7 +1,8 @@
 import * as T from 'three';
-import {loadModelWithRetry,RequiredModelError} from './model-loading';
+import {runLoadQueue,RequiredModelError} from './model-loading';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import {loadPackedModel} from './packed-loader';
 import { MeshoptSimplifier } from 'meshoptimizer';
 
 function deviceMemory(){
@@ -54,23 +55,24 @@ async function trimExcessTriangles(model:GLTF){
   }catch(error){console.warn('Kept the original mesh for one part.',error);}});
 }
 
-export async function loadApprovedModels() {
+export async function loadApprovedModels(onProgress:(fraction:number)=>void=()=>{}) {
   const loader=new GLTFLoader();
-  const fullNames=['modak','ganesha','festival-tram','temple-rooftop','roof-ramp','tribal-drum','marigold-market-cart','titanic-lamp','marigold-temple-gate','om-symbol','meshy-mushika-running'];
+  const fullNames=['meshy-mushika-running','ganesha','modak','festival-tram','temple-rooftop','roof-ramp','tribal-drum','marigold-market-cart','titanic-lamp','marigold-temple-gate','om-symbol'];
   const names=fullNames;
   const path=(name:string)=>name==='ganesha'?'/assets/models/ganesha_3d.glb':name==='tribal-drum'?'/assets/models/festival_drum_on_wheels.glb':name==='marigold-market-cart'?'/assets/models/marigold_market_cart.glb':name==='titanic-lamp'?'/assets/models/titanic_lamp.glb':name==='marigold-temple-gate'?'/assets/models/marigold_temple_gate.glb':name==='om-symbol'?'/assets/models/om_symbol.glb':name==='meshy-mushika-running'?'/assets/models/meshy_mushika_running.glb':`/model-review-v1/models/${name}.glb`;
   const models:Record<string,GLTF>={};
   const maxTexture=textureSizeLimit();
-  // Large festival models are intentionally loaded one at a time. Loading all
-  // of their compressed buffers and 4K textures together can exhaust a mobile
-  // browser's temporary memory even when each individual model is valid.
-  for(const name of names){
-    try{models[name]=await loadModelWithRetry(url=>loader.loadAsync(url),path(name));await trimExcessTriangles(models[name]);}
+  // One decoder on low-memory/unknown mobile devices; at most two elsewhere.
+  const sequential=isLowMemoryDevice()||(deviceMemory()===undefined&&navigator.maxTouchPoints>0);
+  let completed=0;
+  await runLoadQueue(names,sequential?1:2,async name=>{
+    try{models[name]=await loadPackedModel(loader,path(name));await trimExcessTriangles(models[name]);}
     catch(error){
       console.warn('Detailed model unavailable: '+name,error);
       if(name==='ganesha')throw new RequiredModelError('Ganesha could not be downloaded. Check your connection, then tap Retry loading.');
     }
-  }
+    onProgress(++completed/names.length);
+  });
 
   const materials=new Map<T.Material,T.MeshStandardMaterial>();
   const realtime=(source:T.Material)=>{

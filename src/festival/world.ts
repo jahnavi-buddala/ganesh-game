@@ -171,7 +171,7 @@ export default class FestivalWorld {
   shrine:T.Group; aura:T.Mesh; blessingHalo:T.Sprite; blessingGroundAura:T.Group; runnerShadow:T.Mesh; themeDecor:T.Group[]=[]; lastMoveTime=-10; fireworks:T.Points[]=[];
   omLight=new T.PointLight(0xffc247,0,13,1.8);
   assetsReady:Promise<void>; approved=false; mixer?:T.AnimationMixer; clips:T.AnimationClip[]=[]; motion=''; routeCount=0; patternIndex=0; hitFlickerTime=0; deathTime=0; introTime=0; blessingVisual=0;
-  constructor(public canvas:HTMLCanvasElement,onChange:(s:RunState)=>void,onNotice:(message:string)=>void) {
+  constructor(public canvas:HTMLCanvasElement,onChange:(s:RunState)=>void,onNotice:(message:string)=>void,private onLoadProgress:(fraction:number)=>void=()=>{}) {
     this.onChange=onChange;this.onNotice=onNotice;
     this.collectSounds=Array.from({length:3},()=>{const audio=new Audio('/assets/audio/modak-collect.mp3');audio.preload='auto';audio.volume=.34;return audio;});
     // All output goes through the EffectComposer, which renders into plain
@@ -253,7 +253,7 @@ export default class FestivalWorld {
   async installApproved(){
     const fbx=new FBXLoader();
     const [models,animationResults]=await Promise.all([
-      loadApprovedModels(),
+      loadApprovedModels(progress=>this.onLoadProgress(progress*.9)),
       Promise.allSettled([
         fbx.loadAsync('/assets/models/meshy_mushika_slide.fbx'),
         fbx.loadAsync('/assets/models/meshy_mushika_jump.fbx'),
@@ -314,7 +314,7 @@ export default class FestivalWorld {
     // obstacle type appeared mid-run on slower phones.
     const uploaded=new Set<T.Texture>();
     for(const model of Object.values(models))model.scene.traverse(o=>{if(o instanceof T.Mesh)for(const material of Array.isArray(o.material)?o.material:[o.material])for(const value of Object.values(material))if(value instanceof T.Texture&&!uploaded.has(value)){uploaded.add(value);this.renderer.initTexture(value);}});
-    this.approved=true;this.seed();
+    this.approved=true;this.seed();this.onLoadProgress(1);
   }
   makeChunk(roadMat:T.Material,windowTex:T.Texture,signs:T.Texture[],variant=0) {
     const g=new T.Group();const road=new T.Mesh(geo.box,roadMat);road.scale.set(10.6,.2,18);road.position.y=-.15;road.receiveShadow=true;g.add(road);

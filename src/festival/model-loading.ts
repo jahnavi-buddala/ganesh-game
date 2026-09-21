@@ -12,3 +12,15 @@ export async function loadModelWithRetry<T>(load:(url:string)=>Promise<T>,path:s
   }
   throw lastError;
 }
+
+/** Bound simultaneous parsing/downloads so small phones do not spike memory. */
+export async function runLoadQueue<T>(items:readonly T[],concurrency:number,load:(item:T)=>Promise<void>){
+  let next=0,failed=false,failure:unknown;
+  await Promise.all(Array.from({length:Math.min(items.length,Math.max(1,concurrency))},async()=>{
+    while(!failed&&next<items.length){
+      const item=items[next++];
+      try{await load(item);}catch(error){failed=true;failure=error;}
+    }
+  }));
+  if(failed)throw failure;
+}

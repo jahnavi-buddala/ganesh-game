@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build --force",
-    "test:rendering": "node scripts/check-instances.mjs"
+    "test:rendering": "node scripts/check-instances.mjs",
+    "predev": "node scripts/pack-models.mjs",
+    "prebuild": "node scripts/pack-models.mjs",
+    "prebuild-only": "node scripts/pack-models.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 Vighnaharta-Run-polished.zip
+
+# Lossless model downloads generated from the original assets
+public/assets/packed/

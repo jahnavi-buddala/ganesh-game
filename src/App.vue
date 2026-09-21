@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import FestivalWorld from './festival/world';
+import type FestivalWorld from './festival/world';
 import {RequiredModelError} from './festival/model-loading';
 import { freshState, THEMES } from './festival/rules';
 import { getTopScores, submitLeaderboardScore, type LeaderboardEntry } from './leaderboard';
+const loadingProgress=ref(0);
 const canvas=ref<HTMLCanvasElement>(),state=ref(freshState()),notice=ref(''),panel=ref(''),ready=ref(false),error=ref(''),selectedTheme=ref(0),muted=ref(false),fullscreen=ref(false);
 const scores=ref<{score:number;modaks:number;distance:number;combo:number;date:string}[]>([]);
 const leaderboard=ref<LeaderboardEntry[]>([]),leaderboardLoading=ref(false),leaderboardError=ref('');
 const playerName=ref(''),scoreSubmitting=ref(false),scoreSubmitted=ref(false),scoreSubmitMessage=ref('');
-let world:FestivalWorld|undefined,saved=false;
+let world:FestivalWorld|undefined,saved=false,unmounted=false;
 const fmt=(n:number)=>Math.floor(n).toLocaleString('en-IN');
 const clock=computed(()=>`${Math.floor(state.value.elapsed/60)}:${String(Math.floor(state.value.elapsed%60)).padStart(2,'0')}`);
 const highScore=computed(()=>scores.value[0]?.score||0),active=computed(()=>state.value.status!=='ready');
@@ -30,16 +31,19 @@ async function submitFinalScore(){
   catch(error){scoreSubmitMessage.value='The score could not be submitted. Please try again.';console.error(error);}
   finally{scoreSubmitting.value=false;}
 }
-onMounted(()=>{
+onMounted(async()=>{
   try{const rows=JSON.parse(localStorage.getItem('vighnaharta-runs-v1')||'[]');if(Array.isArray(rows))scores.value=rows.filter(r=>r&&Number.isFinite(r.score)&&Number.isFinite(r.modaks)&&Number.isFinite(r.distance)).slice(0,8);}catch{}
   try{playerName.value=localStorage.getItem('vighnaharta-player-name')||'';}catch{}
   document.addEventListener('fullscreenchange',syncFullscreen);window.addEventListener('keydown',handleEscape);
-  try{world=new FestivalWorld(canvas.value!,s=>{
+  // Paint the menu before loading/initializing the 3D engine.
+  await new Promise<void>(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+  if(unmounted)return;
+  try{const {default:World}=await import('./festival/world');if(unmounted)return;world=new World(canvas.value!,s=>{
     state.value=s;
     if(s.status==='over'&&!saved){saved=true;scores.value=[...scores.value,{score:Math.floor(s.score),modaks:s.modaks,distance:Math.floor(s.distance),combo:s.bestCombo,date:new Date().toLocaleDateString()}].sort((a,b)=>b.score-a.score).slice(0,8);try{localStorage.setItem('vighnaharta-runs-v1',JSON.stringify(scores.value));}catch{}}
-  },message=>notice.value=message);void world.assetsReady.then(()=>{ready.value=true;}).catch(e=>{error.value=e instanceof RequiredModelError?e.message:'The models could not load. Tap Retry loading to try again.';console.error(e);});}catch(e){error.value='The 3D scene could not start. Please enable hardware acceleration and reload.';console.error(e);}
+  },message=>notice.value=message,progress=>loadingProgress.value=Math.round(progress*100));void world.assetsReady.then(()=>{ready.value=true;}).catch(e=>{error.value=e instanceof RequiredModelError?e.message:'The models could not load. Tap Retry loading to try again.';console.error(e);});}catch(e){error.value='The 3D scene could not start. Please enable hardware acceleration and reload.';console.error(e);}
 });
-onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange',syncFullscreen);window.removeEventListener('keydown',handleEscape);});
+onUnmounted(()=>{unmounted=true;world?.dispose();document.removeEventListener('fullscreenchange',syncFullscreen);window.removeEventListener('keydown',handleEscape);});
 </script>
 <template>
   <main class="game-shell" :class="{'is-playing':active,'has-blessing':state.blessing>0}">
@@ -48,7 +52,7 @@ onUnmounted(()=>{world?.dispose();document.removeEventListener('fullscreenchange
     <header v-if="!active" class="topbar"><a class="wordmark" href="#" @click.prevent="menu"><span class="brand-seal">ॐ</span><span>VIGHNAHARTA<span class="wordmark-sub">THE FESTIVAL RUN</span></span></a><div class="topbar-right"><span class="edition">GANESH CHATURTHI EDITION</span><button class="icon-button" @click="sound" :aria-label="muted?'Enable sound':'Mute sound'">{{muted?'♫̸':'♫'}}</button><button class="icon-button" @click="toggleFullscreen" :aria-label="fullscreen?'Exit fullscreen':'Enter fullscreen'">⛶</button></div></header>
     <section v-if="!active" class="main-menu" aria-label="Main menu">
       <div class="eyebrow">A LITTLE HERO. A DIVINE ADVENTURE.</div><div class="title-emblem" aria-hidden="true"><span>ॐ</span></div><h1>Vighnaharta<span>RUN</span></h1><p class="tagline">Beat the Vighna. Earn the Blessing.</p><p class="menu-description">A little courage. A trail of modaks.<br>One unforgettable journey to Bappa.</p>
-      <button class="play-button" @click="start" :disabled="!ready"><span>▶</span>{{ready?'LET’S PLAY':'PREPARING THE FESTIVAL…'}}<span>→</span></button>
+      <button class="play-button" @click="start" :disabled="!ready"><span>▶</span>{{ready?'LET’S PLAY':loadingProgress>0?'LOADING '+loadingProgress+'%':'PREPARING THE FESTIVAL…'}}<span>→</span></button>
       <div class="menu-links"><button @click="panel='guide'">⌨ &nbsp; How to play</button><button @click="openLeaderboard">♜ &nbsp; Leaderboard</button></div>
       <button class="journey-button" @click="panel='journey'"><span class="journey-dot"></span><span><small>YOUR JOURNEY BEGINS IN</small>{{THEMES[selectedTheme]}}</span><span>⌄</span></button>
       <div v-if="highScore" class="personal-best">PERSONAL BEST <b>{{fmt(highScore)}}</b></div><div v-if="error" role="alert"><p class="error">{{error}}</p><button class="play-button" @click="retryLoading">RETRY LOADING <span>↻</span></button></div>

@@ -66,3 +66,9 @@ The gameplay checks cover lane limits, jumping, sliding, collisions, heart loss,
 The project combines custom/procedural Three.js scenery with 3D and audio files supplied by the project team. The menu illustration was created with OpenAI image generation. Development used coding assistance, but the gameplay rules, presentation, testing, and final integration remain part of this repository and can be explained from the source.
 
 Before contest submission, attach the original creator/license link or generation record for every externally supplied model, texture, image, and audio file. See [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) for the remaining submission items.
+
+### First-load delivery
+
+`npm run dev` and `npm run build` generate lossless packed models in `public/assets/packed`. Originals remain unchanged; the packing script verifies decompressed bytes against every original GLB. The 92.4 MB model set transfers as about 70.3 MB. Content-hashed filenames can be cached safely across visits. The opening menu renders before the 3D engine initializes, with progress while models load. Low-memory and unknown mobile devices decode one model at a time; other devices load at most two concurrently. Browsers without streaming gzip support use the original GLBs.
+
+Run `node scripts/check-model-loading.mjs` to check queue limits, retry recovery, and both automatic and manual gzip decoding.
