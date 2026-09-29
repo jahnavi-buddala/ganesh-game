@@ -76,10 +76,12 @@ assert.equal(worldSource.includes('streetTemplates.get(variant)!.clone()'),false
 assert.ok(worldSource.includes('themePools'),'theme decorations must use instance pools');
 assert.equal(/\broot\.clone\(\)/.test(worldSource),false,'theme rows must not clone every theme into the scene');
 assert.ok(worldSource.includes('prepareModel('),'approved models must merge submeshes before instancing');
-assert.ok(!/this\.scene\.add\(this\.omLight\)/.test(worldSource.split('installApproved')[0]),'idle Om light must stay out of the scene so unused point lighting is not paid every frame');
+assert.ok(/this\.scene\.add\(this\.omLight\)/.test(worldSource.split('installApproved')[0]),'Om light must be registered before gameplay to keep shader light counts stable');
+assert.ok(!worldSource.includes('this.omLight.removeFromParent()'),'collection, death and restart must not change shader light counts');
+assert.ok(worldSource.includes('this.warmPickupEffects()'),'the actual Om and blessing materials must be drawn before Play');
 assert.ok(worldSource.includes('alpha:false'),'opaque canvas avoids extra Android compositor work over the HUD');
 assert.ok(worldSource.includes('PCFShadowMap'),'4GB Adreno/Mali phones must not run 9-tap soft shadows');
-console.log('PASS 4GB path instances streets/themes, merges model draws, and keeps the idle Om light off the light list');
+console.log('PASS street/theme batching and stable prewarmed Om lighting');
 
 const approvedSource=readFileSync('src/festival/approved.ts','utf8');
 assert.ok(approvedSource.includes("const names=fullNames"),'every approved model stays loaded');

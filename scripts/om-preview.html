@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Om rendering regression check</title>
+<style>body{margin:0;background:#201b29;color:#fff;font:14px sans-serif}canvas{width:100vw;height:75vh;display:block}button{padding:10px;margin:8px}pre{white-space:pre-wrap;padding:10px}</style>
+<canvas id="game"></canvas><button id="check" disabled>Check Om spawn, collection and replay</button><button id="show" disabled>Preview Om and blessing</button><pre id="report">Loading full game assets…</pre>
+<script type="module">
+import World from '../src/festival/world.ts';
+const report=document.querySelector('#report'),check=document.querySelector('#check'),show=document.querySelector('#show');
+const world=new World(document.querySelector('canvas'),()=>{},()=>{});
+world.muted=true;
+const stop=()=>cancelAnimationFrame(world.raf);
+const frame=()=>{const start=performance.now();world.animate();stop();return +(performance.now()-start).toFixed(2);};
+const nextFrame=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+const programs=()=>world.renderer.info.programs.length;
+const textures=()=>world.renderer.info.memory.textures;
+function reset(){world.start();stop();world.introTime=0;world.muted=true;world.clock.getDelta=()=>1/60;}
+try{await world.assetsReady;stop();check.disabled=false;show.disabled=false;report.textContent='Ready. Tests use local runs only; no leaderboard submissions.';}catch(error){report.textContent='FAIL loading: '+error;}
+check.onclick=async()=>{
+  check.disabled=true;show.disabled=true;const results=[];
+  try{
+    for(let cycle=0;cycle<2;cycle++){
+      reset();
+      for(let i=0;i<12;i++){frame();await nextFrame();}
+      const before=programs(),beforeTextures=textures(),idle=[];
+      for(let i=0;i<20;i++){idle.push(frame());await nextFrame();}
+      world.state.elapsed=59.999;world.state.nextGate=60;
+      const spawnMs=frame(),spawnPrograms=programs();await nextFrame();
+      const gift=world.entities.find(entity=>entity.kind==='om');
+      if(!gift)throw Error('Scheduled Om did not spawn');
+      if(world.omLight.intensity!==7)throw Error('Pickup glow did not turn on');
+      gift.lane=0;gift.mesh.position.set(0,0,5);world.state.x=0;world.state.lane=0;
+      const collectMs=frame();await nextFrame();frame();
+      if(!world.state.maha||world.state.blessing<=0)throw Error('Om did not activate blessing');
+      if(!world.blessingGroundAura.visible)throw Error('Ground aura is missing');
+      const collectPrograms=programs(),collectTextures=textures();
+      world.state.blessing=.001;frame();await nextFrame();
+      world.menu();frame();reset();frame();
+      const afterReset=programs();
+      const pass=before===spawnPrograms&&before===collectPrograms&&before===afterReset&&beforeTextures===collectTextures;
+      results.push({cycle:cycle+1,pass,programs:{before,spawn:spawnPrograms,collect:collectPrograms,replay:afterReset},textures:{before:beforeTextures,collect:collectTextures},cpuMs:{idleMedian:idle.sort((a,b)=>a-b)[10],spawn:spawnMs,collect:collectMs}});
+      report.textContent=JSON.stringify(results,null,2);
+      if(!pass)throw Error('New GPU resources/programs were created during the Om transition');
+    }
+    report.textContent='PASS: no new shader programs or textures on Om spawn, collection, expiration and replay.\nCPU measurements are local browser diagnostics, not physical phone benchmarks.\n'+JSON.stringify(results,null,2);
+  }catch(error){report.textContent='FAIL: '+error+'\n'+JSON.stringify(results,null,2);}
+  finally{stop();check.disabled=false;show.disabled=false;}
+};
+show.onclick=()=>{reset();world.add('om',0,-20);world.state.blessing=10;world.state.maha=true;frame();report.textContent='Om model, glow and ground blessing aura preview (paused).';};
+window.addEventListener('pagehide',()=>world.dispose());
+</script></html>

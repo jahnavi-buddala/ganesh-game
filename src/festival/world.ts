@@ -98,8 +98,7 @@ function omGift(){
   const ring=mesh(group,'torus',0xffc640,[0,0,0],[1.05,1.05,1.05],.8);ring.rotation.x=Math.PI/2;
   const outer=mesh(group,'torus',0xffe58c,[0,.04,0],[1.35,1.35,1.35],.6);outer.rotation.x=Math.PI/2;
   const beam=new T.Mesh(new T.CylinderGeometry(.14,.72,6,20,1,true),new T.MeshBasicMaterial({color:0xffcf55,transparent:true,opacity:.18,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide}));beam.position.y=2.2;group.add(beam);
-  // The pickup glow light is added only while an Om gift is on screen. Adding it
-  // permanently would make every material pay for a second point light.
+  // The matching scene light stays attached; only its intensity changes at pickup.
   return group;
 }
 function mouse() {
@@ -170,6 +169,7 @@ export default class FestivalWorld {
   pointer:{x:number;y:number}|null=null;pointerStart:(e:PointerEvent)=>void;pointerEnd:(e:PointerEvent)=>void;
   shrine:T.Group; aura:T.Mesh; blessingHalo:T.Sprite; blessingGroundAura:T.Group; runnerShadow:T.Mesh; themeDecor:T.Group[]=[]; lastMoveTime=-10; fireworks:T.Points[]=[];
   omLight=new T.PointLight(0xffc247,0,13,1.8);
+  blessingTextureReady:Promise<void>;
   assetsReady:Promise<void>; approved=false; mixer?:T.AnimationMixer; clips:T.AnimationClip[]=[]; motion=''; routeCount=0; patternIndex=0; hitFlickerTime=0; deathTime=0; introTime=0; blessingVisual=0;
   constructor(public canvas:HTMLCanvasElement,onChange:(s:RunState)=>void,onNotice:(message:string)=>void,private onLoadProgress:(fraction:number)=>void=()=>{}) {
     this.onChange=onChange;this.onNotice=onNotice;
@@ -189,6 +189,9 @@ export default class FestivalWorld {
     const sun=new T.DirectionalLight(0xff9d4d,2.85);sun.position.set(-15,22,12);sun.castShadow=true;
     sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-20,right:20,top:25,bottom:-25,far:100});sun.shadow.bias=-.0008;this.scene.add(sun);
     const fill=new T.DirectionalLight(0x829ee8,.72);fill.position.set(8,11,-12);this.scene.add(fill);
+    // Changing the light count recompiles lit materials during the run. Keep the
+    // Om light registered (and dark) so spawning/collecting only updates uniforms.
+    this.scene.add(this.omLight);
     this.camera.position.set(0,3.45,10.1);this.camera.lookAt(0,1.4,-5);
     const roadTexture=canvasTexture(512,512,c=>{
       c.fillStyle='#342c33';c.fillRect(0,0,512,512);
@@ -224,9 +227,10 @@ export default class FestivalWorld {
     const blessingTexture=new T.TextureLoader().load('/assets/images/blessing_aura.webp');blessingTexture.colorSpace=T.SRGBColorSpace;
     this.blessingHalo=new T.Sprite(new T.SpriteMaterial({map:blessingTexture,color:0xffd36b,transparent:true,opacity:.88,depthWrite:false,depthTest:false,blending:T.AdditiveBlending,toneMapped:false}));
     this.blessingHalo.position.set(0,1.15,.08);this.blessingHalo.scale.setScalar(3.65);this.blessingHalo.visible=false;this.blessingHalo.renderOrder=8;this.runner.g.add(this.blessingHalo);
-    const blessingGroundTexture=new T.TextureLoader().load('/assets/images/golden_blessing_ring.png');blessingGroundTexture.colorSpace=T.SRGBColorSpace;
+    const blessingGroundTexture=new T.Texture();blessingGroundTexture.colorSpace=T.SRGBColorSpace;
     const groundRing=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({map:blessingGroundTexture,transparent:true,opacity:.9,depthWrite:false,depthTest:true,blending:T.AdditiveBlending,toneMapped:false,side:T.DoubleSide}));
     groundRing.position.y=.03;groundRing.rotation.x=-Math.PI/2;groundRing.scale.setScalar(2.8);groundRing.renderOrder=7;
+    this.blessingTextureReady=new T.TextureLoader().loadAsync('/assets/images/golden_blessing_ring.png').then(texture=>{texture.colorSpace=T.SRGBColorSpace;groundRing.material.map=texture;groundRing.material.needsUpdate=true;blessingGroundTexture.dispose();});
     this.blessingGroundAura=new T.Group();this.blessingGroundAura.position.set(0,0,3);this.blessingGroundAura.visible=false;this.blessingGroundAura.add(groundRing);this.scene.add(this.blessingGroundAura);
     const contact=canvasTexture(128,128,c=>{const gradient=c.createRadialGradient(64,64,8,64,64,62);gradient.addColorStop(0,'#251924aa');gradient.addColorStop(.5,'#25192466');gradient.addColorStop(1,'#25192400');c.fillStyle=gradient;c.fillRect(0,0,128,128);});
     this.runnerShadow=new T.Mesh(new T.PlaneGeometry(2.2,1.65),new T.MeshBasicMaterial({map:contact,transparent:true,depthWrite:false,opacity:.8}));this.runnerShadow.rotation.x=-Math.PI/2;this.runnerShadow.position.set(0,.025,3);this.scene.add(this.runnerShadow);
@@ -259,6 +263,7 @@ export default class FestivalWorld {
         fbx.loadAsync('/assets/models/meshy_mushika_jump.fbx'),
         fbx.loadAsync('/assets/models/meshy_mushika_death.fbx'),
       ]),
+      this.blessingTextureReady,
     ]);if(this.disposed)return;
     const [slideSource,jumpSource,deathSource]=animationResults.map(result=>result.status==='fulfilled'?result.value:undefined);
     const heroAsset=models['meshy-mushika-running'];
@@ -308,13 +313,23 @@ export default class FestivalWorld {
     }
     deity.traverse(o=>{if(o instanceof T.Mesh){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)m.fog=false;}});}
     for(const source of [slideSource,jumpSource,deathSource])source?.traverse(object=>{if(object instanceof T.Mesh)object.geometry.dispose();});
-    this.scene.add(this.omLight);this.omLight.intensity=7;this.renderer.compile(this.scene,this.camera);this.omLight.removeFromParent();this.omLight.intensity=0;
     // Push every model texture to the GPU now, behind the loading screen. Lazy
     // uploads of 2048x2048 maps used to cause a visible hitch the first time each
     // obstacle type appeared mid-run on slower phones.
     const uploaded=new Set<T.Texture>();
     for(const model of Object.values(models))model.scene.traverse(o=>{if(o instanceof T.Mesh)for(const material of Array.isArray(o.material)?o.material:[o.material])for(const value of Object.values(material))if(value instanceof T.Texture&&!uploaded.has(value)){uploaded.add(value);this.renderer.initTexture(value);}});
+    this.warmPickupEffects();
     this.approved=true;this.seed();this.onLoadProgress(1);
+  }
+  warmPickupEffects(){
+    // Compile and draw the real Om and ground aura behind the menu, including
+    // their first geometry/texture uploads. Use the same linear offscreen output
+    // as EffectComposer; compiling for the screen creates different programs.
+    const pickup=this.templates.om.clone(),target=new T.WebGLRenderTarget(32,32);
+    const previousTarget=this.renderer.getRenderTarget(),auraVisible=this.blessingGroundAura.visible;
+    pickup.position.set(0,0,0);this.scene.add(pickup);this.blessingGroundAura.visible=true;
+    try{this.renderer.setRenderTarget(target);this.renderer.compile(this.scene,this.camera);this.renderer.render(this.scene,this.camera);}
+    finally{this.renderer.setRenderTarget(previousTarget);this.blessingGroundAura.visible=auraVisible;pickup.removeFromParent();target.dispose();}
   }
   makeChunk(roadMat:T.Material,windowTex:T.Texture,signs:T.Texture[],variant=0) {
     const g=new T.Group();const road=new T.Mesh(geo.box,roadMat);road.scale.set(10.6,.2,18);road.position.y=-.15;road.receiveShadow=true;g.add(road);
@@ -456,7 +471,7 @@ export default class FestivalWorld {
     mesh(deity,'torus',palette.gold,[0,3,.1],[2.9,3.2,1],.5);
     return g;
   }
-  seed(){for(const e of this.entities){if(e.pool)e.pool.remove(e.mesh);else this.scene.remove(e.mesh);}this.entities=[];this.omLight.intensity=0;this.omLight.removeFromParent();this.routeCount=0;for(const lane of [-1,0,1])for(let z=-10-lane*2;z>-34;z-=7)this.add('modak',lane,z);this.add('drum',-1,-42);this.add('barrier',0,-54);this.add('drum',1,-66,0,'marketCart');this.add('cart',0,-80);}
+  seed(){for(const e of this.entities){if(e.pool)e.pool.remove(e.mesh);else this.scene.remove(e.mesh);}this.entities=[];this.omLight.intensity=0;this.routeCount=0;for(const lane of [-1,0,1])for(let z=-10-lane*2;z>-34;z-=7)this.add('modak',lane,z);this.add('drum',-1,-42);this.add('barrier',0,-54);this.add('drum',1,-66,0,'marketCart');this.add('cart',0,-80);}
   addRoute(lane:number,z:number){this.add('ramp',lane,z);this.add('cart',lane,z-4.1);this.add('rooftop',lane,z-11.9);for(let i=0;i<6;i++)this.add('modak',lane,z-3-i*2.4,2.67);}
   add(kind:Entity['kind'],lane:number,z:number,elevation=0,appearance?:string){const selected=this.templates[appearance||kind]||this.templates[kind];if(!selected)return;const pool=this.instancePools.get(appearance||kind),mesh=pool?pool.create():selected.clone();mesh.position.set(lane*3.1,kind==='modak'?.75+elevation:kind==='om'?elevation:0,z);mesh.userData.appearance=selected===this.templates[appearance||kind]?(appearance||kind):kind;this.scene.add(mesh);this.entities.push({mesh,lane,kind,checked:false,elevation,pool});}
   resetRunnerPose(intro:boolean){this.runner.g.position.set(0,0,3);this.runner.g.rotation.set(0,0,0);this.runner.g.scale.set(1,1,1);this.runner.g.visible=true;this.runnerShadow.position.set(0,.025,3);this.runnerShadow.scale.setScalar(1);this.blessingGroundAura.visible=false;this.blessingVisual=0;this.mixer?.stopAllAction();this.motion='';if(intro&&this.mixer){const clip=T.AnimationClip.findByName(this.clips,'Intro');if(clip){const action=this.mixer.clipAction(clip);action.reset().setLoop(T.LoopOnce,1);action.clampWhenFinished=true;action.play();this.motion='Intro';this.mixer.update(0);}}}
@@ -500,7 +515,7 @@ export default class FestivalWorld {
       this.collisionBodies.length=bodyCount;this.collisionEntities.length=bodyCount;
       const requested=travel;const result=resolveMotion(s,before,this.collisionBodies,requested);
       travel=result.travel;s.distance=before.distance+travel;s.score=before.score+travel*(s.maha&&s.blessing>0?4:2);
-      if(result.blocked>=0){const obstacle=this.collisionEntities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitFlickerTime=0;this.omLight.intensity=0;this.omLight.removeFromParent();for(const entity of this.entities)if(entity.kind!=='modak'&&entity.mesh.position.z>-4&&entity.mesh.position.z<8)entity.mesh.visible=false;this.onNotice('');this.tone(105,.7);}else{this.hitFlickerTime=.34;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
+      if(result.blocked>=0){const obstacle=this.collisionEntities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitFlickerTime=0;this.omLight.intensity=0;for(const entity of this.entities)if(entity.kind!=='modak'&&entity.mesh.position.z>-4&&entity.mesh.position.z<8)entity.mesh.visible=false;this.onNotice('');this.tone(105,.7);}else{this.hitFlickerTime=.34;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
     }
     if(was==='running'&&s.nextGate!==before.nextGate){const giftLane=((Math.floor(s.elapsed/60)+this.patternIndex)%3-1) as -1|0|1;this.add('om',giftLane,-72);this.notice('A sacred Om gift has appeared!');this.tone(784,.28);}
     if(s.status==='running'){
@@ -527,7 +542,7 @@ export default class FestivalWorld {
           }else if(dx<3.8&&s.elapsed-this.lastMoveTime<.65&&s.blessing<=0){this.celebrate('Near miss!');}
         }
       }
-      if(omGlow){if(!this.omLight.parent)this.scene.add(this.omLight);this.omLight.position.set(omGlow.position.x,omGlow.position.y+1.2,omGlow.position.z);this.omLight.intensity=7;}else{this.omLight.intensity=0;this.omLight.removeFromParent();}
+      if(omGlow){this.omLight.position.set(omGlow.position.x,omGlow.position.y+1.2,omGlow.position.z);this.omLight.intensity=7;}else{this.omLight.intensity=0;}
       let kept=0;for(const e of this.entities){if(e.mesh.position.z>18){if(e.pool)e.pool.remove(e.mesh);else this.scene.remove(e.mesh);}else this.entities[kept++]=e;}this.entities.length=kept;
       this.beat+=dt;if(this.beat>1.1){this.beat=0;this.tone([196,246.94,293.66,392][Math.floor(s.elapsed)%4],.18);}
     }
