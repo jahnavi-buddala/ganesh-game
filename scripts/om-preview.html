@@ -22,7 +22,7 @@ check.onclick=async()=>{
       for(let i=0;i<12;i++){frame();await nextFrame();}
       const before=programs(),beforeTextures=textures(),idle=[];
       for(let i=0;i<20;i++){idle.push(frame());await nextFrame();}
-      world.state.elapsed=59.999;world.state.nextGate=60;
+      world.state.elapsed=world.state.nextGate-.001;
       const spawnMs=frame(),spawnPrograms=programs();await nextFrame();
       const gift=world.entities.find(entity=>entity.kind==='om');
       if(!gift)throw Error('Scheduled Om did not spawn');

@@ -9,7 +9,7 @@ import { isLowMemoryDevice, loadApprovedModels } from './approved';
 import { ModelInstances } from './instances';
 import { resolveMotion } from './rules';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { advance, clears, collect, freshState, hit, move, obstaclePattern, obstacleSpacing, reward, type Obstacle, type RunState } from './rules';
+import { advance, clears, collect, freshState, hit, move, obstaclePattern, obstacleSpacing, reward, OM_FIRST_SPAWN, OM_SPAWN_INTERVAL, type Obstacle, type RunState } from './rules';
 
 type Entity = { mesh:T.Group; lane:number; kind:Obstacle|'modak'|'om'|'ramp'|'rooftop'; checked:boolean; elevation:number; pool?:ModelInstances };
 const palette = {gold:0xe9aa35, red:0x9e2034, stone:0xba7956, ivory:0xffdfac, pink:0xd8918e};
@@ -517,7 +517,7 @@ export default class FestivalWorld {
       travel=result.travel;s.distance=before.distance+travel;s.score=before.score+travel*(s.maha&&s.blessing>0?4:2);
       if(result.blocked>=0){const obstacle=this.collisionEntities[result.blocked];if(s.blessing>0){obstacle.mesh.visible=false;obstacle.checked=true;this.notice('Blessing cleared the path!');}else if(hit(s)){obstacle.checked=true;obstacle.mesh.userData.hit=true;if(s.hearts<=0){s.status='dying';this.deathTime=3.08;this.hitFlickerTime=0;this.omLight.intensity=0;for(const entity of this.entities)if(entity.kind!=='modak'&&entity.mesh.position.z>-4&&entity.mesh.position.z<8)entity.mesh.visible=false;this.onNotice('');this.tone(105,.7);}else{this.hitFlickerTime=.34;this.notice(`Blocked by ${obstacle.mesh.userData.appearance==='marketCart'?'market cart':obstacle.kind}! Jump, slide, or change lanes`);this.tone(160,.22);}}}
     }
-    if(was==='running'&&s.nextGate!==before.nextGate){const giftLane=((Math.floor(s.elapsed/60)+this.patternIndex)%3-1) as -1|0|1;this.add('om',giftLane,-72);this.notice('A sacred Om gift has appeared!');this.tone(784,.28);}
+    if(was==='running'&&s.nextGate!==before.nextGate){const giftIndex=Math.round((before.nextGate-OM_FIRST_SPAWN)/OM_SPAWN_INTERVAL);const giftLane=((giftIndex+1+this.patternIndex)%3-1) as -1|0|1;this.add('om',giftLane,-72);this.notice('A sacred Om gift has appeared!');this.tone(784,.28);}
     if(s.status==='running'){
       for(const c of this.chunks){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}
       for(const c of this.themeDecor){c.position.z+=travel;if(c.position.z>30)c.position.z-=180;}

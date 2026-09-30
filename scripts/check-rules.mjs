@@ -14,7 +14,21 @@ check('three hits end the run; grace period prevents duplicate hits',()=>{const 
 check('combos award score without repeatedly activating blessings',()=>{const s=running();for(let i=0;i<8;i++)assert.equal(reward(s),'combo');assert.equal(s.combo,8);assert.equal(s.score,1200);assert.equal(s.blessing,0);assert.equal(s.maha,false);});
 check('modak scoring doubles during Maha Aashirwad',()=>{const s=running();collect(s);assert.equal(s.score,50);s.maha=true;s.blessing=10;collect(s);assert.equal(s.score,150);assert.equal(s.modaks,2);});
 check('pause freezes all gameplay timers',()=>{const s=running();s.blessing=8;s.slide=.4;s.status='paused';const before={...s};advance(s,1,0);assert.deepEqual(s,before);});
-check('Om gift milestones occur every 60 seconds without stopping gameplay',()=>{const s=running();s.elapsed=59.9;const d=s.distance;advance(s,.1,0);assert.equal(s.status,'running');assert.equal(s.nextGate,120);assert.ok(s.distance>d);s.elapsed=119.9;advance(s,.1,0);assert.equal(s.status,'running');assert.equal(s.nextGate,180);});
+check('Om first appears at 15 seconds and repeats every 35 seconds at varied frame rates',()=>{
+  for(const fps of [20,30,60,120]){
+    const s=running(),spawns=[];
+    for(let i=0;i<fps*125;i++){const next=s.nextGate;advance(s,1/fps,0);if(s.nextGate!==next)spawns.push(s.elapsed);}
+    assert.equal(s.status,'running');assert.equal(spawns.length,4);
+    spawns.forEach((time,i)=>assert.ok(Math.abs(time-[15,50,85,120][i])<=1/fps+.00001,`unexpected Om time ${time} at ${fps} FPS`));
+  }
+});
+check('Om schedule freezes when paused and resets for a new run',()=>{
+  const s=running();s.elapsed=14.99;s.status='paused';advance(s,20,0);
+  assert.equal(s.elapsed,14.99);assert.equal(s.nextGate,15);
+  s.status='running';advance(s,.02,0);assert.equal(s.nextGate,50);
+  advance(s,.02,0);assert.equal(s.nextGate,50,'one gift per milestone');
+  assert.equal(freshState().nextGate,15);assert.equal(freshState().elapsed,0);
+});
 check('speed rises and obstacle spacing tightens with distance',()=>{assert.ok(runSpeed(600)>runSpeed(0));assert.ok(runSpeed(1600)>runSpeed(600));assert.ok(runSpeed(600,true)>runSpeed(600,false));assert.ok(obstacleSpacing(600)<obstacleSpacing(0));assert.equal(obstacleSpacing(9999),13);});
 check('every obstacle pattern leaves its promised lane open',()=>{for(let distance=0;distance<=900;distance+=150)for(let i=0;i<18;i++){const p=obstaclePattern(i,distance);assert.ok(!p.obstacles.some(o=>o.lane===p.safeLane));assert.ok(new Set(p.obstacles.map(o=>o.lane)).size===p.obstacles.length);}});
 check('time-based scoring remains consistent at different frame rates',()=>{const simulate=fps=>{const s=running();for(let i=0;i<fps*10;i++)advance(s,1/fps,0);return s;};const a=simulate(30),b=simulate(120);assert.ok(Math.abs(a.distance-b.distance)<.1);assert.ok(Math.abs(a.score-b.score)<.2);assert.ok(Math.abs(a.elapsed-b.elapsed)<1e-8);});

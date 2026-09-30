@@ -1,6 +1,8 @@
 export type Status = 'ready' | 'running' | 'paused' | 'gate' | 'dying' | 'over';
 export type Obstacle = 'drum' | 'cart' | 'barrier';
 export const THEMES = ['Temple Street', 'Market Street', 'Festival Avenue', 'Pandal Zone', 'Temple Corridor'];
+export const OM_FIRST_SPAWN = 15;
+export const OM_SPAWN_INTERVAL = 35;
 export interface RunState {
   status: Status; score: number; modaks: number; distance: number; elapsed: number;
   hearts: number; combo: number; bestCombo: number; blessing: number; maha: boolean;
@@ -10,7 +12,7 @@ export interface RunState {
 export function freshState(theme = 0): RunState {
   return {status:'ready', score:0, modaks:0, distance:0, elapsed:0, hearts:3,
     combo:0, bestCombo:0, blessing:0, maha:false, lane:0, x:0, jump:0,
-    velocityY:0, slide:0, ground:0, invincible:0, gateTime:45, nextGate:60, theme};
+    velocityY:0, slide:0, ground:0, invincible:0, gateTime:45, nextGate:OM_FIRST_SPAWN, theme};
 }
 export function runSpeed(distance:number,blessing=false){
   const progressive=15+Math.min(5,distance/80)+Math.min(5,Math.max(0,distance-400)/180)+Math.min(5,Math.max(0,distance-900)/220);
@@ -32,9 +34,8 @@ export function advance(s: RunState, dt: number, startingTheme: number) {
   s.slide = Math.max(0, s.slide-dt); s.invincible = Math.max(0, s.invincible-dt);
   s.blessing = Math.max(0, s.blessing-dt); if (!s.blessing) s.maha = false;
   s.theme = (startingTheme + Math.floor(s.distance/500)) % THEMES.length;
-  // One-minute milestones now release an Om gift into the live track instead
-  // of interrupting the run with a question screen.
-  if (s.elapsed >= s.nextGate) s.nextGate += 60;
+  // Introduce the gift early, then release another every 35 active-play seconds.
+  if (s.elapsed >= s.nextGate) s.nextGate += OM_SPAWN_INTERVAL;
   return travel;
 }
 export function move(s:RunState, action:'left'|'right'|'jump'|'slide') {

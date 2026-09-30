@@ -2,7 +2,7 @@
 
 **Beat the Vighna. Earn the Blessing.**
 
-Vighnaharta Run is a Ganesh Chaturthi endless runner starring Mushika. Dodge festival obstacles, collect modaks, climb connected rooftop routes, and run toward Lord Ganesha's distant pandal. A sacred Om gift appears during longer runs and activates Maha Aashirwad Mode.
+Vighnaharta Run is a Ganesh Chaturthi endless runner starring Mushika. Dodge festival obstacles, collect modaks, climb connected rooftop routes, and run toward Lord Ganesha's distant pandal. A sacred Om gift first appears after 15 seconds of play, then every 35 seconds, and activates Maha Aashirwad Mode when collected.
 
 ## Play
 

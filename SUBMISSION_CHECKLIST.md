@@ -26,7 +26,7 @@
 2. **0:15-0:35 - Controls:** demonstrate one lane change, jump, and slide.
 3. **0:35-1:10 - Gameplay:** collect modaks, dodge a drum/gate/cart, and climb one connected rooftop route.
 4. **1:10-1:30 - Festival identity:** point out the pandal, rangoli, diyas, marigolds, lamps, and changing streets.
-5. **1:30-1:50 - Special feature:** show the Om collectible and Maha Aashirwad Mode. If recording a natural two-minute run is inconvenient, record this later in the run and edit it into the demo.
+5. **1:30-1:50 - Special feature:** show the Om collectible and Maha Aashirwad Mode. The first gift appears after 15 seconds of play and repeats every 35 seconds; edit one of these moments into the demo.
 6. **1:50-2:15 - Complete loop:** lose the final heart, show the result screen, enter a player name, submit the score, and show the top-ten leaderboard.
 7. **2:15-2:30 - Technical close:** mention responsive mobile controls, shared model rendering, and the Vue/Three.js/Supabase stack.
 
